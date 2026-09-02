@@ -427,14 +427,8 @@ function showLogin(msg){
 async function doLogin(){
  const em=document.getElementById('lem').value.trim(),pw=document.getElementById('lpw').value;
  const b=document.getElementById('lbtn');if(b){b.textContent='…';b.disabled=true;}
- let r=await sb.auth.signInWithPassword({email:em,password:pw});
- if(r.error&&/invalid/i.test(r.error.message||'')){
-  const su=await sb.auth.signUp({email:em,password:pw});
-  if(su.error){showLogin(su.error.message);return;}
-  if(su.data&&su.data.session){loadData();return;}
-  showLogin('Konto opprettet. Sjekk e-posten og bekreft, deretter logg inn.');return;
- }
- if(r.error){showLogin(r.error.message);return;}
+ const r=await sb.auth.signInWithPassword({email:em,password:pw});
+ if(r.error){showLogin(/invalid/i.test(r.error.message||'')?'Feil e-post eller passord. Prøv igjen.':r.error.message);return;}
  loadData();
 }
 async function initApp(){
