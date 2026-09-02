@@ -86,6 +86,10 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 .mcell{background:var(--card2);border-radius:9px;padding:7px 9px}
 .mk{font-size:10px;color:var(--mut)}
 .mv{font-size:15px;font-weight:750}
+.logrow{display:flex;align-items:center;gap:6px;margin:5px 0}
+.lognm{flex:1;font-size:13px}
+.loginp{width:60px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px;font-size:15px;text-align:center}
+.lagrebtn{width:100%;margin-top:9px;background:var(--grad);color:#fff;border:0;border-radius:11px;padding:12px;font-size:15px;font-weight:800}
 .navbtn{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:11px;width:40px;height:40px;font-size:18px;font-weight:700}
 /* rec */
 .rec{background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 16%,var(--card)),var(--card));border:1px solid color-mix(in srgb,var(--acc) 34%,var(--line))}
@@ -278,13 +282,26 @@ function pageTrening(){
 function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE||d>=FASE.start)s.add(d)});WK.forEach(w=>{if(/Styrke/i.test(w.t)&&(!FASE||w.d>=FASE.start))s.add(w.d)});return [...s].sort();}
 function faseUke(){if(!FASE)return 1;const dgr=Math.floor((toDate(maxD)-toDate(FASE.start))/86400000);return Math.min(FASE.uker,Math.max(1,Math.floor(dgr/7)+1));}
 function nextStrengthIdx(){if(!FASE)return 0;return strengthDays().length%FASE.rotasjon.length;}
+async function saveStyrke(tittel,n){
+ const st=document.getElementById('lagrestatus');
+ const ov=FASE.rotasjon[nextStrengthIdx()].ov;const rader=[];
+ for(let i=0;i<n;i++){const kg=(document.getElementById('lkg'+i)||{}).value;const rp=(document.getElementById('lrp'+i)||{}).value;
+  if(kg&&(''+kg).trim()!==''){rader.push({ovelse:ov[i],vekt_kg:(''+kg).trim(),reps:(rp&&(''+rp).trim())||'12',sett:3,rir:FASE.rir,notat:tittel});}}
+ if(!rader.length){st.innerHTML='<span style="color:var(--energy)">Skriv inn minst én vekt først.</span>';return;}
+ if(typeof sb==='undefined'||!sb){st.innerHTML='<span style="color:var(--warn)">Ikke innlogget.</span>';return;}
+ st.textContent='Lagrer…';
+ const dato=fromDate(new Date());
+ const {data,error}=await sb.rpc('helse_lagre_styrke',{p_dato:dato,p_rader:rader});
+ if(error){st.innerHTML='<span style="color:var(--warn)">Feil: '+error.message+'</span>';return;}
+ st.innerHTML='<span style="color:var(--good)">✓ Lagret '+rader.length+' øvelser ('+dato+'). Vises i «Trening»-loggen etter neste synk.</span>';
+}
 function planVisning(){
  if(!FASE)return '<div class="muted small">Ingen plan.</div>';
  const uke=faseUke(),idx=nextStrengthIdx(),neste=FASE.rotasjon[idx],gjort=strengthDays().length;
  let h=`<div class="card" style="background:var(--grad);color:#fff;border:0"><div style="font-weight:850;font-size:18px">${FASE.navn}</div><div style="opacity:.92;font-size:13px;margin-top:2px">Uke ${uke} av ${FASE.uker} · ${gjort} styrkeøkter gjennomført</div></div>`;
  h+='<h2 class="sh">Mål i fasen</h2><div class="card"><div class="muted small" style="margin-bottom:8px">Bygg sener, senefester og teknikk før vi legger på vekt. Tre brytere fra din egen langtidsanalyse:</div>'+FASE.brytere.map(b=>`<div class="ex">🎯 ${b}</div>`).join('')+`<div class="muted small" style="margin-top:8px">Alle øvelser: <b style="color:var(--ink)">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo}</b>. Aldri til failure.</div></div>`;
  h+='<h2 class="sh">Neste styrkeøkt</h2>';
- h+=`<div class="card tight tap" onclick="tgl('nst')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">🏋️ ${neste.tittel}</div><div class="dt">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo}</div></div><span class="pill styrke">neste</span></div><div id="nst" style="display:none;margin-top:8px">${neste.ov.map(o=>`<div class="ex">${o}</div>`).join('')}<div class="muted small" style="margin-top:6px">Høyre skulder/biceps: nøytralt grep, kun smertefri bane, ekstra lett — gå på følelsen, ikke tallene.</div></div></div>`;
+ h+=`<div class="card tight"><div class="li tap" style="border:0;padding:2px 0" onclick="tgl('nst')"><div><div class="nm">🏋️ ${neste.tittel}</div><div class="dt">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo} · trykk for å logge</div></div><span class="pill styrke">neste</span></div><div id="nst" style="display:none;margin-top:10px" onclick="event.stopPropagation()"><div class="muted small" style="margin-bottom:8px">Skriv inn kg (og reps) per øvelse og lagre — så følger vi progresjonen.</div>${neste.ov.map((o,i)=>`<div class="logrow"><span class="lognm">${o}</span><input id="lkg${i}" class="loginp" type="number" inputmode="decimal" placeholder="kg"><input id="lrp${i}" class="loginp" type="number" inputmode="numeric" placeholder="reps"></div>`).join('')}<button class="lagrebtn" onclick="saveStyrke('${neste.tittel.replace(/'/g,'')}',${neste.ov.length})">Lagre økt ✓</button><div id="lagrestatus" class="small" style="margin-top:8px"></div><div class="muted small" style="margin-top:8px">Høyre skulder/biceps: nøytralt grep, kun smertefri bane, ekstra lett — gå på følelsen.</div></div></div>`;
  h+='<h2 class="sh">Rotasjon</h2><div class="card">'+FASE.rotasjon.map((r,i)=>`<div class="ex" style="display:flex;justify-content:space-between;align-items:center"><span>${i===idx?'▶ ':'&nbsp;&nbsp;&nbsp;'}${r.tittel}</span>${i===idx?'<span class="pill styrke">neste</span>':''}</div>`).join('')+'<div class="muted small" style="margin-top:6px">Roterer ut fra det du faktisk gjør — ikke ukedag.</div></div>';
  h+=`<h2 class="sh">Kondis</h2><div class="card"><div class="ex"><b>🌀 Restitusjon (Zone 2):</b> ${FASE.zone2}</div><div class="ex" style="margin-top:4px"><b>🔥 Tempoøkt:</b> ${FASE.tempo_okt}</div><div class="muted small" style="margin-top:6px">Aldri to løpedager på rad. Høy puls venter på legeklarering — symptomer slår app-tall.</div></div>`;
  h+='<h2 class="sh">Aktivitet siste 14 dager</h2><div class="card">';
