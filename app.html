@@ -82,6 +82,10 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 .seg2{display:flex;gap:3px;padding:3px}
 .seg2 button{border:0;background:transparent;color:var(--mut);padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700}
 .seg2 button.on{background:var(--grad);color:#fff}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mcell{background:var(--card2);border-radius:9px;padding:7px 9px}
+.mk{font-size:10px;color:var(--mut)}
+.mv{font-size:15px;font-weight:750}
 .navbtn{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:11px;width:40px;height:40px;font-size:18px;font-weight:700}
 /* rec */
 .rec{background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 16%,var(--card)),var(--card));border:1px solid color-mix(in srgb,var(--acc) 34%,var(--line))}
@@ -263,8 +267,13 @@ function todayTraining(day){
 
 /* ================= PAGE: TRENING ================= */
 function pageTrening(){
- let h='<div class="pagetitle">Trening</div><div class="pagesub">7-dagers plan · planlagt vs. gjennomført · progresjon</div>';
- // week ahead
+ let h='<div class="pagetitle">Trening</div>';
+ h+=`<div class="seg2" style="margin:2px 4px 12px"><button class="${trTab==='plan'?'on':''}" style="flex:1" onclick="trTab='plan';pageTrening()">Plan</button><button class="${trTab==='trening'?'on':''}" style="flex:1" onclick="trTab='trening';pageTrening()">Trening</button></div>`;
+ h+=(trTab==='trening')?treningLogg():planVisning();
+ document.getElementById('p-trening').innerHTML=h;window.scrollTo(0,0);
+}
+function planVisning(){
+ let h='<div class="pagesub" style="margin-top:-8px">7-dagers plan · planlagt vs. gjennomført · progresjon</div>';
  h+='<h2 class="sh">Uke framover</h2>';
  PLAN.forEach((p,i)=>{
   const dn=doneFor(p.dato);const done=dn.workouts.length||dn.sty;const past=p.dato<fromDate(new Date());
@@ -275,21 +284,55 @@ function pageTrening(){
   if(p.type==='styrke')h+=`<div class="muted small" style="margin-top:6px">Høyre arm: nøytralt grep, 2–3 reps i reserve, smertefri bane (supraspinatus/biceps).</div>`;
   h+='</div></div>';
  });
- // adherence last 14 days
  h+='<h2 class="sh">Planlagt vs. gjennomført (14 d)</h2><div class="card">';
  let done=0,tot=0;const cells=[];
  for(let i=13;i>=0;i--){const day=addDays(maxD,-i);const pl=plannedFor(day),dn=doneFor(day);const rest=pl&&pl.type==='hvile';const d=dn.workouts.length||dn.sty;if(!rest)tot++;if(d&&!rest)done++;
   const c=rest?'var(--dim)':(d?'var(--good)':'var(--warn)');cells.push(`<div title="${day}" style="flex:1;height:26px;border-radius:5px;background:${c};opacity:${rest?.3:.9}"></div>`)}
  h+=`<div style="display:flex;gap:3px;margin-bottom:8px">${cells.join('')}</div><div class="muted small">Etterlevelse: <b style="color:var(--ink)">${tot?Math.round(done/tot*100):0}%</b> (${done}/${tot} planlagte økter gjennomført). Grønn = gjort · rød = uteblitt · grå = hviledag.</div></div>`;
- // volume trend
  const mv=monthVolume();
  h+='<h2 class="sh">Treningsvolum (økter/mnd)</h2><div class="card">'+barChart(mv.labels,mv.counts)+'</div>';
- document.getElementById('p-trening').innerHTML=h;
+ return h;
+}
+function ikonFor(t){if(/Løp/i.test(t))return'🏃';if(/Gå|Gange/i.test(t))return'🚶';if(/Sykkel|Sykling/i.test(t))return'🚴';if(/Styrke/i.test(t))return'🏋️';if(/Ellip/i.test(t))return'🌀';if(/Roing|Ro-/i.test(t))return'🚣';if(/Svøm/i.test(t))return'🏊';if(/Yoga|Mobil/i.test(t))return'🧘';return'🏃';}
+function paceStr(mpk){const m=Math.floor(mpk),s=Math.round((mpk-m)*60);return `${m}:${String(s).padStart(2,'0')}`;}
+function hrSpark(hrs){if(!hrs||hrs.length<2)return'';const W=280,H=42,n=hrs.length,mn=Math.min(...hrs),mx=Math.max(...hrs),rg=(mx-mn)||1;const pts=hrs.map((v,i)=>`${(i/(n-1)*W).toFixed(1)},${(H-4-((v-mn)/rg)*(H-8)).toFixed(1)}`).join(' ');return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;margin-top:4px"><polyline points="${pts}" fill="none" stroke="#ff6b6b" stroke-width="1.5"/></svg>`;}
+function treningLogg(){
+ if(!WK.length&&!Object.keys(STY).length)return '<div class="muted small center" style="padding:20px">Ingen registrerte økter ennå.</div>';
+ const covered=new Set(WK.filter(w=>/Styrke/i.test(w.t)).map(w=>w.d));
+ const extra=Object.keys(STY).filter(d=>!covered.has(d)).map(d=>({d,t:'Styrketrening',loc:'Innendørs',m:0,km:0,synt:true}));
+ const ws=[...WK,...extra].sort((a,b)=> a.d<b.d?1:a.d>b.d?-1:((a.s||'')<(b.s||'')?1:-1));
+ let h='<div class="pagesub" style="margin-top:-8px">Gjennomførte økter · alle resultater</div>';let curM='';
+ ws.forEach((w,i)=>{
+  const ym=w.d.slice(0,7);if(ym!==curM){curM=ym;h+=`<h2 class="sh">${MONF[+ym.slice(5,7)-1]} ${ym.slice(0,4)}</h2>`;}
+  const erSty=/Styrke/i.test(w.t);const pace=(w.km>0&&w.m>0)?(w.m/w.km):null;
+  const sty=erSty?(STY[w.d]||[]):[];
+  const rhs=w.km>0?fmt(w.km,2)+' km':(sty.length?sty.length+' øvelser':(w.kc?fmt(w.kc,0)+' kcal':''));
+  h+=`<div class="card tight tap" onclick="tgl('ok${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${ikonFor(w.t)} ${w.t}</div><div class="dt">${labelDay(w.d)}${w.s?' · '+w.s:''}${w.hr?' · ♥ '+fmt(w.hr,0):''}</div></div><div style="text-align:right"><div class="nm">${w.m?fmt(w.m,0)+' min':''}</div><div class="dt">${rhs}</div></div></div>`;
+  h+=`<div id="ok${i}" style="display:none;margin-top:8px">`;
+  const g=[];
+  if(w.m)g.push(['Varighet',fmt(w.m,0)+' min']);
+  if(w.km>0)g.push(['Distanse',fmt(w.km,2)+' km']);
+  if(pace)g.push(['Tempo',paceStr(pace)+' /km']);
+  if(w.hr)g.push(['Snittpuls',fmt(w.hr,0)+' bpm']);
+  if(w.hrmax)g.push(['Makspuls',fmt(w.hrmax,0)+' bpm']);
+  if(w.kc)g.push(['Kalorier',fmt(w.kc,0)+' kcal']);
+  if(w.cad)g.push(['Kadens',fmt(w.cad,0)]);
+  if(w.steps)g.push(['Skritt',fmt(w.steps,0)]);
+  if(w.up)g.push(['Stigning',fmt(w.up,0)+' m']);
+  if(w.spdmax)g.push(['Maksfart',fmt(w.spdmax,1)+' km/t']);
+  if(w.s&&w.e)g.push(['Klokkeslett',w.s+'–'+w.e]);
+  if(g.length)h+=`<div class="mgrid">${g.map(x=>`<div class="mcell"><div class="mk">${x[0]}</div><div class="mv">${x[1]}</div></div>`).join('')}</div>`;
+  if(w.hrs&&w.hrs.length>1)h+=`<div class="muted small" style="margin-top:8px">Pulskurve (${Math.min(...w.hrs)}–${Math.max(...w.hrs)} bpm)</div>${hrSpark(w.hrs)}`;
+  if(sty.length){h+='<div class="muted small" style="margin-top:8px">Øvelser</div>';sty.forEach(e=>h+=`<div class="ex" style="display:flex;justify-content:space-between;gap:8px"><span>${e.o}${e.n?' <span class="muted" style="font-size:11px">'+e.n+'</span>':''}</span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${e.v?e.v+' kg · ':''}${e.s}×${e.r}${e.rir?' · RIR '+e.rir:''}</span></div>`);}
+  h+='</div></div>';
+ });
+ return h;
 }
 function monthVolume(){const m={};WK.forEach(x=>{const k=x.d.slice(0,7);m[k]=(m[k]||0)+1});const labels=Object.keys(m).sort().slice(-14);return{labels,counts:labels.map(l=>m[l])}}
 function barChart(labels,counts){if(!counts.length)return '<div class="muted small">ingen data</div>';const W=320,H=120,pl=6,pb=16,pt=8;const mx=Math.max(1,...counts),n=counts.length,bw=(W-2*pl)/n*.72;const X=i=>pl+(i+.5)*((W-2*pl)/n),Y=v=>pt+(1-v/mx)*(H-pt-pb);let s='';counts.forEach((v,i)=>{const hh=(H-pt-pb)-(Y(v)-pt);s+=`<rect x="${(X(i)-bw/2).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" rx="2" fill="url(#g)"><title>${labels[i]}: ${v}</title></rect>`});return `<svg class="chart" viewBox="0 0 ${W} ${H}" style="height:${H}px"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>${s}<text x="${pl}" y="${H-3}" fill="var(--dim)" font-size="9">${labels[0]}</text><text x="${W-pl}" y="${H-3}" fill="var(--dim)" font-size="9" text-anchor="end">${labels[n-1]}</text></svg>`}
 
 /* ================= PAGE: DATA ================= */
+let trTab='plan';
 let dMetric='w', dGran='uke', dAnchor=maxD;
 function clampD(s){return s<minD?minD:(s>maxD?maxD:s)}
 function clampYear(y){const lo=+minD.slice(0,4),hi=+maxD.slice(0,4);return (y<lo?lo:(y>hi?hi:y))+'-06-15'}
