@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="no"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Helse">
+<meta name="theme-color" content="#0a0d13">
+<title>Terje · Helse</title>
+<script src="apexcharts.min.js"></script>
+<script src="supabase.min.js"></script>
+<style>
+:root{
+ --bg:#0a0d13;--bg2:#0e131c;--card:#151c28;--card2:#1b2431;--line:#26303f;
+ --ink:#eef3fa;--mut:#8b98ad;--dim:#5d6a7d;
+ --acc:#5b8cff;--acc2:#7c5cff;--good:#2dd4bf;--warn:#ff6b81;--energy:#ffa94d;
+ --grad:linear-gradient(135deg,#5b8cff,#7c5cff);--r:18px;
+ --safe-t:env(safe-area-inset-top);--safe-b:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:calc(72px + var(--safe-b))}
+.app{max-width:640px;margin:0 auto}
+/* header */
+.hdr{position:sticky;top:0;z-index:20;padding:calc(var(--safe-t) + 12px) 18px 12px;
+ background:linear-gradient(var(--bg) 60%,rgba(10,13,19,.85) 90%,transparent);backdrop-filter:blur(8px)}
+.hdr .row{display:flex;align-items:center;gap:11px}
+.mono{width:38px;height:38px;border-radius:11px;background:var(--grad);display:grid;place-items:center;
+ font-weight:800;font-size:15px;color:#fff;letter-spacing:-.5px;box-shadow:0 4px 16px rgba(92,140,255,.35)}
+.hdr h1{font-size:18px;margin:0;font-weight:750;letter-spacing:-.3px}
+.hdr .sub{color:var(--mut);font-size:11.5px;margin-top:1px}
+.pagetitle{font-size:26px;font-weight:820;letter-spacing:-.6px;margin:6px 18px 2px}
+.pagesub{color:var(--mut);font-size:12.5px;margin:0 18px 10px}
+/* pages */
+.page{display:none;padding:4px 14px 30px;animation:fade .25s ease}
+.page.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;margin:11px 4px}
+.card.tight{padding:13px 14px}
+h2.sh{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 6px 6px;font-weight:700}
+/* hero readiness */
+.hero{background:radial-gradient(120% 120% at 0% 0%,color-mix(in srgb,var(--acc) 22%,var(--card)),var(--card));
+ border:1px solid color-mix(in srgb,var(--acc) 35%,var(--line));display:flex;align-items:center;gap:18px}
+.ring{position:relative;width:104px;height:104px;flex:none}
+.ring .val{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .num{font-size:30px;font-weight:850;letter-spacing:-1px;line-height:1}
+.ring .lab{font-size:10px;color:var(--mut);margin-top:2px}
+.hero .txt{flex:1}
+.hero .st{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.hero .ds{color:var(--mut);font-size:13px;margin-top:3px}
+/* stat grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:4px}
+.grid.g3{grid-template-columns:1fr 1fr 1fr}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px;cursor:pointer;transition:.15s}
+.stat:active{transform:scale(.97)}
+.stat .k{font-size:11px;color:var(--mut);font-weight:600}
+.stat .v{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+.stat .v small{font-size:11px;color:var(--dim);font-weight:600;margin-left:2px}
+.chip{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:20px;margin-top:6px}
+.chip.up{color:var(--good);background:color-mix(in srgb,var(--good) 16%,transparent)}
+.chip.dn{color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)}
+.chip.fl{color:var(--mut);background:color-mix(in srgb,var(--mut) 15%,transparent)}
+/* rows */
+.li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border:0}.li .nm{font-weight:650}.li .dt{color:var(--mut);font-size:12px;margin-top:1px}
+.li .rt{text-align:right}.li .rt .b{font-weight:750}
+.pill{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+.pill.styrke{background:color-mix(in srgb,var(--acc2) 20%,transparent);color:#b9a7ff}
+.pill.kondis{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.pill.hvile{background:color-mix(in srgb,var(--mut) 18%,transparent);color:var(--mut)}
+.pill.ok{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
+.pill.miss{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+/* sleep bar / charts */
+.stage{display:flex;height:24px;border-radius:8px;overflow:hidden;margin:8px 0 4px}.stage div{height:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--mut);font-size:11.5px}
+.legend span{display:inline-flex;align-items:center;gap:5px}.d{width:8px;height:8px;border-radius:3px}
+svg.chart{width:100%;display:block}
+.bal{display:flex;align-items:flex-end;gap:3px;height:70px;margin-top:8px}
+/* selects */
+.selrow{display:flex;gap:8px;flex-wrap:wrap;margin:4px}
+select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:9px 12px;font-size:14px;font-weight:600}
+.seg2{display:flex;gap:3px;padding:3px}
+.seg2 button{border:0;background:transparent;color:var(--mut);padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700}
+.seg2 button.on{background:var(--grad);color:#fff}
+.navbtn{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:11px;width:40px;height:40px;font-size:18px;font-weight:700}
+/* rec */
+.rec{background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 16%,var(--card)),var(--card));border:1px solid color-mix(in srgb,var(--acc) 34%,var(--line))}
+.rec .rk{font-weight:800;font-size:14px}.rec .rb{color:var(--mut);font-size:13px;margin-top:3px}
+.muted{color:var(--mut)}.small{font-size:12px}.center{text-align:center}
+.foot{color:var(--dim);font-size:11px;text-align:center;padding:14px 20px 4px;line-height:1.5}
+.ex{padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px}.ex:last-child{border:0}
+.tap{cursor:pointer}
+.taphint{color:var(--dim);font-size:10.5px;text-align:center;margin-top:4px}
+.cmodal{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;padding:calc(var(--safe-t) + 12px) 14px calc(var(--safe-b) + 14px)}
+.cmodal.on{display:flex}
+.chead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ctitle{font-size:19px;font-weight:850;letter-spacing:-.3px}
+.cclose{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:12px;width:42px;height:42px;font-size:16px;font-weight:700}
+.cread{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.cread .cv{font-size:30px;font-weight:850;letter-spacing:-1px}.cread .cd{color:var(--acc);font-size:13px;font-weight:600;margin-top:2px}
+.cwrap{flex:1;position:relative;touch-action:none;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.cwrap svg{width:100%;height:100%;display:block}
+.chelp{color:var(--dim);font-size:11px;text-align:center;margin-top:8px}
+.shell{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.login{width:100%;max-width:320px;text-align:center}
+.mono2{width:58px;height:58px;border-radius:17px;background:var(--grad);display:grid;place-items:center;font-weight:800;font-size:21px;color:#fff;margin:0 auto 16px;box-shadow:0 8px 30px rgba(92,140,255,.4)}
+.login h1{font-size:21px;margin:0 0 2px;font-weight:800}
+.login input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:14px 16px;font-size:16px;margin-top:10px;outline:none}
+.login input:focus{border-color:var(--acc)}
+.login button{width:100%;background:var(--grad);color:#fff;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:700;margin-top:12px}
+.lerr{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);border-radius:10px;padding:9px 11px;font-size:13px;margin-top:10px}
+.lbox{text-align:center}.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--acc);border-radius:50%;margin:0 auto 12px;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;
+ padding:8px 6px calc(8px + var(--safe-b));background:rgba(14,19,28,.92);backdrop-filter:blur(16px);
+ border-top:1px solid var(--line)}
+.nav a{flex:1;text-align:center;color:var(--dim);text-decoration:none;font-size:10px;font-weight:700;padding:2px}
+.nav a .ic{font-size:21px;display:block;line-height:1.2;filter:grayscale(1) opacity(.7)}
+.nav a.on{color:var(--acc)}.nav a.on .ic{filter:none}
+</style></head><body>
+<div class="app">
+ <div class="hdr"><div class="row">
+   <div class="mono">TH</div>
+   <div style="flex:1"><h1 id="hi">Hei, Terje</h1><div class="sub" id="hsub"></div></div>
+ </div></div>
+
+ <div class="page on" id="p-idag"></div>
+ <div class="page" id="p-trening"></div>
+ <div class="page" id="p-data"></div>
+ <div class="page" id="p-kropp"></div>
+ <div class="page" id="p-kost"></div>
+
+ <div class="foot">Privat helsedata — kun for Terje. Måledata, ikke medisinsk diagnose; symptomer og lege går foran tall.<br>Kilde: Apple Watch · Withings · MyFitnessPal.</div>
+</div>
+<div class="cmodal" id="cmodal"></div>
+<div class="shell" id="shell"><div class="lbox"><div class="spin"></div></div></div>
+<nav class="nav" id="nav" style="display:none">
+ <a data-p="idag" class="on"><span class="ic">📅</span>I dag</a>
+ <a data-p="trening"><span class="ic">🏋️</span>Trening</a>
+ <a data-p="data"><span class="ic">📊</span>Data</a>
+ <a data-p="kropp"><span class="ic">❤️</span>Kropp</a>
+ <a data-p="kost"><span class="ic">🍽️</span>Kosthold</a>
+</nav>
+<script>
+const SBURL="https://eqexsfwedreefqkiujge.supabase.co", SBKEY="sb_publishable_gKpTafEl4sGFCH3j4vfDqA_Majh7uZP";
+let DATA={meta:{}}, R=[], WK=[], FOOD={}, STY={}, PLAN=[], PLANMAL={}, REC=null, MAAL={kcal:1950,protein:165,vekt:90};
+let byDate={}, minD="", maxD="", sb=null;
+const MON=['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+const MONF=['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
+const DAG=['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
+const METRICS=[
+ {k:'w',t:'Vekt',u:'kg',agg:'last',hb:false,d:1},
+ {k:'rhr',t:'Hvilepuls',u:'/min',agg:'mean',hb:false,d:0},
+ {k:'hrv',t:'HRV natt',u:'ms',agg:'mean',hb:true,d:0},
+ {k:'sl',t:'Søvn',u:'t',agg:'mean',hb:true,d:1},
+ {k:'dp',t:'Dyp søvn',u:'t',agg:'mean',hb:true,d:1},
+ {k:'vo2',t:'VO₂max',u:'',agg:'mean',hb:true,d:1},
+ {k:'o2',t:'SpO₂ min',u:'%',agg:'mean',hb:true,d:0},
+ {k:'br',t:'Pustefrekvens',u:'/min',agg:'mean',hb:false,d:1},
+ {k:'bps',t:'Blodtrykk (sys)',u:'mmHg',agg:'mean',hb:false,d:0},
+ {k:'st',t:'Skritt',u:'/dag',agg:'mean',hb:true,d:0},
+ {k:'ae',t:'Aktiv energi',u:'kcal',agg:'mean',hb:true,d:0},
+ {k:'dl',t:'Dagslys',u:'min',agg:'mean',hb:true,d:0},
+ {k:'kcm',t:'Kalorier (mat)',u:'kcal',agg:'mean',hb:false,d:0},
+ {k:'prm',t:'Protein (mat)',u:'g',agg:'mean',hb:true,d:0},
+];
+const MK=Object.fromEntries(METRICS.map(m=>[m.k,m]));
+
+/* ---------- date utils ---------- */
+function d2(n){return(n<10?'0':'')+n}
+function toDate(s){const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
+function fromDate(t){return t.getFullYear()+'-'+d2(t.getMonth()+1)+'-'+d2(t.getDate())}
+function addDays(s,n){const t=toDate(s);t.setDate(t.getDate()+n);return fromDate(t)}
+function monday(s){const t=toDate(s);const w=(t.getDay()+6)%7;t.setDate(t.getDate()-w);return fromDate(t)}
+function isoWeek(s){const t=toDate(s);t.setHours(0,0,0,0);t.setDate(t.getDate()+3-((t.getDay()+6)%7));const w1=new Date(t.getFullYear(),0,4);return 1+Math.round(((t-w1)/864e5-3+((w1.getDay()+6)%7))/7)}
+function fmt(x,d){return(x==null||isNaN(x))?'–':(Math.round(x*10**d)/10**d).toLocaleString('no')}
+function labelDay(s){const t=toDate(s);return t.getDate()+'. '+MON[t.getMonth()]}
+
+/* ---------- aggregation ---------- */
+function vals(col,filter){return R.filter(filter).map(r=>r[col]).filter(x=>x!=null)}
+function stat(arr){if(!arr.length)return null;const s=arr.reduce((a,b)=>a+b,0);return{n:arr.length,mean:s/arr.length,min:Math.min(...arr),max:Math.max(...arr),last:arr[arr.length-1]}}
+function lastVal(col,skipToday){const idag=fromDate(new Date());for(let i=R.length-1;i>=0;i--){if(skipToday&&R[i].d===idag)continue;if(R[i][col]!=null)return{v:R[i][col],d:R[i].d}}return{v:null,d:null}}
+function windowMean(col,days,end){const e=end||maxD;const s=addDays(e,-days);const a=R.filter(r=>r.d>s&&r.d<=e).map(r=>r[col]).filter(x=>x!=null);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function chipHtml(cur,prev,hb){if(cur==null||prev==null)return '<span class="chip fl">–</span>';const dd=cur-prev;if(Math.abs(dd)<Math.abs(cur||1)*.005)return '<span class="chip fl">→</span>';const up=dd>0,good=(up===hb);return `<span class="chip ${good?'up':'dn'}">${up?'▲':'▼'} ${fmt(Math.abs(dd),1)}</span>`}
+
+/* ---------- charts ---------- */
+function lineChart(points,hb,h){
+ h=h||120;const W=320,pl=34,pr=8,pt=10,pb=18;
+ const ys=points.map(p=>p[1]).filter(v=>v!=null);
+ if(ys.length<2)return '<div class="muted small center" style="padding:20px">for lite data</div>';
+ let mn=Math.min(...ys),mx=Math.max(...ys);if(mn===mx){mn-=1;mx+=1}const pad=(mx-mn)*.12;mn-=pad;mx+=pad;
+ const n=points.length,X=i=>pl+(n<=1?0:i/(n-1)*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn))*(h-pt-pb);
+ let d='',started=false,firstI=null,lastI=null;
+ points.forEach((p,i)=>{if(p[1]==null)return;d+=(started?'L':'M')+X(i).toFixed(1)+' '+Y(p[1]).toFixed(1)+' ';started=true;if(firstI==null)firstI=i;lastI=i});
+ const first=points[firstI][1],last=points[lastI][1];const up=last>first,col=(up===hb)?'var(--good)':'var(--warn)';
+ const area=d+`L${X(lastI).toFixed(1)} ${h-pb} L${X(firstI).toFixed(1)} ${h-pb} Z`;
+ let g='';[0,.5,1].forEach(f=>{const yy=pt+f*(h-pt-pb),vv=mx-(mx-mn)*f;g+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="var(--line)"/><text x="2" y="${yy+3}" fill="var(--dim)" font-size="9">${fmt(vv,1)}</text>`});
+ return `<svg class="chart" viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" style="height:${h}px">${g}<path d="${area}" fill="${col}" opacity=".08"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2"/><circle cx="${X(lastI).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="3" fill="${col}"/><text x="${pl}" y="${h-4}" fill="var(--dim)" font-size="9">${points[0][0]}</text><text x="${W-pr}" y="${h-4}" fill="var(--dim)" font-size="9" text-anchor="end">${points[n-1][0]}</text></svg>`;
+}
+function spark(arr,hb){const pts=arr.map((v,i)=>[i,v]).filter(p=>p[1]!=null);if(pts.length<2)return '';const W=120,H=34;const ys=pts.map(p=>p[1]);let mn=Math.min(...ys),mx=Math.max(...ys);if(mn===mx){mn-=1;mx+=1}const n=arr.length,X=i=>i/(n-1)*W,Y=v=>4+(1-(v-mn)/(mx-mn))*(H-8);let d='';pts.forEach((p,k)=>d+=(k?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)+' ');const up=pts[pts.length-1][1]>pts[0][1];return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><path d="${d}" fill="none" stroke="${(up===hb)?'var(--good)':'var(--warn)'}" stroke-width="2"/></svg>`}
+
+/* ---------- workout detail (puls + kart + høyde) ---------- */
+function hrCurve(hrs){if(!hrs||hrs.length<2)return '';const W=300,H=56;let mn=Math.min(...hrs),mx=Math.max(...hrs);if(mn===mx){mn-=1;mx+=1}const n=hrs.length,X=i=>i/(n-1)*W,Y=v=>4+(1-(v-mn)/(mx-mn))*(H-8);let d='';hrs.forEach((v,i)=>d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ');return `<div class="muted small" style="margin-top:8px">Pulskurve ${Math.round(mn)}–${Math.round(mx)}</div><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><path d="${d}" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>`}
+function elevSvg(a){if(!a||a.length<2)return '';const W=300,H=44;let mn=Math.min(...a),mx=Math.max(...a);if(mn===mx){mn-=1;mx+=1}const n=a.length,X=i=>i/(n-1)*W,Y=v=>4+(1-(v-mn)/(mx-mn))*(H-8);let d='M0 '+Y(a[0]).toFixed(1);a.forEach((v,i)=>{if(i)d+='L'+X(i).toFixed(1)+' '+Y(v).toFixed(1)});d+=`L${W} ${H} L0 ${H} Z`;return `<div class="muted small" style="margin-top:6px">Høyde ${Math.round(mn)}–${Math.round(mx)} m</div><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><path d="${d}" fill="var(--acc)" opacity=".18" stroke="var(--acc)" stroke-width="1.4"/></svg>`}
+function routeSvg(rt){if(!rt||rt.length<2)return '';const la0=(Math.min(...rt.map(p=>p[0]))+Math.max(...rt.map(p=>p[0])))/2,kx=Math.cos(la0*Math.PI/180);const xs=rt.map(p=>p[1]*kx),ys=rt.map(p=>p[0]);const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);const w=(mxx-mnx)||1e-6,h=(mxy-mny)||1e-6,pad=8,S=260,sc=Math.min(S/w,S/h);const W=w*sc+2*pad,H=h*sc+2*pad,X=x=>pad+(x-mnx)*sc,Y=y=>H-pad-(y-mny)*sc;let d='';rt.forEach((p,i)=>d+=(i?'L':'M')+X(p[1]*kx).toFixed(1)+' '+Y(p[0]).toFixed(1)+' ');return `<div class="muted small" style="margin-top:8px">Rute</div><svg class="chart" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" style="max-height:230px;width:100%"><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${X(rt[0][1]*kx).toFixed(1)}" cy="${Y(rt[0][0]).toFixed(1)}" r="4" fill="var(--good)"/><circle cx="${X(rt[rt.length-1][1]*kx).toFixed(1)}" cy="${Y(rt[rt.length-1][0]).toFixed(1)}" r="4" fill="var(--warn)"/></svg>`}
+function woDetail(x){const rows=[['Distanse',x.km?fmt(x.km,2)+' km':0],['Snittpuls',x.hr?x.hr+' /min':0],['Makspuls',x.hrmax?x.hrmax+' /min':0],['Snittfart',x.spd?fmt(x.spd,1)+' km/t':0],['Energi',x.kc?x.kc+' kcal':0],['Skritt',x.steps?fmt(x.steps,0):0],['Kadens',x.cad?x.cad+' spm':0],['Høyde ↑',x.up?x.up+' m':0],['Trapper',x.fl||0],['Tid',x.s&&x.e?x.s+'–'+x.e:0]].filter(r=>r[1]);const kv=rows.map(r=>`<div class="kv" style="display:flex;justify-content:space-between;font-size:12.5px;background:var(--card2);border-radius:9px;padding:6px 10px"><span class="muted">${r[0]}</span><b>${r[1]}</b></div>`).join('');return `<div style="padding:8px 0">${hrCurve(x.hrs)}${routeSvg(x.rt)}${elevSvg(x.alt)}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${kv}</div></div>`}
+function tgl(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'block':'none'}
+
+/* ---------- readiness ---------- */
+function readiness(){
+ const l=lastVal('sl',false),h=lastVal('hrv',false),rp=lastVal('rhr',false);
+ const hb=windowMean('hrv',30),rb=windowMean('rhr',30);
+ let sc=[],parts=[];
+ if(l.v!=null){const s=Math.max(0,Math.min(1,(l.v-4)/(7.5-4)));sc.push(s);parts.push(['Søvn',fmt(l.v,1)+' t'])}
+ if(h.v!=null&&hb){const s=Math.max(0,Math.min(1,h.v/(hb*1.15)));sc.push(s);parts.push(['HRV',Math.round(h.v)+' ms'])}
+ if(rp.v!=null&&rb){const s=Math.max(0,Math.min(1,rb/rp.v));sc.push(s);parts.push(['Hvilepuls',Math.round(rp.v)])}
+ const score=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length*100):null;
+ let lab='—',col='var(--mut)';
+ if(score!=null){if(score>=70){lab='Klar for økt';col='var(--good)'}else if(score>=50){lab='Moderat — hold igjen litt';col='var(--energy)'}else{lab='Ta det rolig i dag';col='var(--warn)'}}
+ return{score,lab,col,parts,date:l.d||h.d||rp.d};
+}
+function ring(score,col){const r=44,c=2*Math.PI*r,off=c*(1-(score||0)/100);return `<svg viewBox="0 0 104 104" style="width:104px;height:104px"><circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--card2)" stroke-width="9"/><circle cx="52" cy="52" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 52 52)"/></svg>`}
+
+/* ---------- energy balance ---------- */
+function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kcm;const ut=(r.ae!=null?r.ae:0)+2300;/* estimert basal ~2300 */return{inn,ut:r.ae!=null?Math.round(r.ae+2300):null,bal:(inn!=null&&r.ae!=null)?Math.round(inn-(r.ae+2300)):null}}
+
+/* ================= PAGE: I DAG ================= */
+function pageIdag(){
+ const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
+ let h='';
+ h+=`<div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div>`;
+ h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div></div></div>`;
+ // vital summary
+ h+='<h2 class="sh">Nøkkeltall</h2><div class="grid">';
+ [['w','Vekt'],['rhr','Hvilepuls'],['hrv','HRV natt'],['sl','Søvn'],['st','Skritt'],['ae','Aktiv energi']].forEach(([k,t])=>{
+  const lv=lastVal(k,false),m=MK[k];const s7=windowMean(k,7),s14=windowMean(k,14,addDays(maxD,-7));
+  h+=`<div class="stat" onclick="go('data','${k}')"><div class="k">${t}</div><div class="v">${fmt(lv.v,m.d)}<small>${m.u}</small></div>${chipHtml(s7,s14,m.hb)}</div>`});
+ h+='</div>';
+ // sleep
+ if(r.sl!=null){const light=Math.max(0,(r.sl||0)-(r.dp||0)-(r.rm||0)),tot=(r.sl||0)+(r.aw||0)||1;const seg=(v,c)=>`<div style="width:${(v/tot*100).toFixed(1)}%;background:${c}"></div>`;
+  h+=`<h2 class="sh">Søvn i natt</h2><div class="card"><div style="font-size:19px;font-weight:800">${fmt(r.sl,1)} t</div><div class="stage">${seg(r.dp,'#3b5bdb')}${seg(r.rm,'#7c5cff')}${seg(light,'#4dabf7')}${seg(r.aw,'#3a4657')}</div><div class="legend"><span><i class="d" style="background:#3b5bdb"></i>Dyp ${fmt(r.dp,1)}</span><span><i class="d" style="background:#7c5cff"></i>REM ${fmt(r.rm,1)}</span><span><i class="d" style="background:#4dabf7"></i>Lett ${fmt(light,1)}</span><span><i class="d" style="background:#3a4657"></i>Våken ${fmt(r.aw,1)}</span></div></div>`}
+ // today training planned vs done
+ h+='<h2 class="sh">Trening i dag</h2>'+todayTraining(day);
+ // energy balance
+ const eb=energyBalance(day);
+ if(eb&&eb.bal!=null){h+=`<h2 class="sh">Energibalanse i dag</h2><div class="card"><div style="display:flex;justify-content:space-between"><div><div class="muted small">Inntak</div><div style="font-weight:800;font-size:18px">${fmt(eb.inn,0)}</div></div><div><div class="muted small">Forbruk</div><div style="font-weight:800;font-size:18px">${fmt(eb.ut,0)}</div></div><div><div class="muted small">Balanse</div><div style="font-weight:800;font-size:18px;color:${eb.bal<0?'var(--good)':'var(--energy)'}">${eb.bal>0?'+':''}${fmt(eb.bal,0)}</div></div></div><div class="muted small" style="margin-top:8px">Kun logget mat teller. Forbruk ≈ aktiv + basal (~2300).</div></div>`}
+ // recommendation
+ if(REC){h+=`<h2 class="sh">Anbefaling i morgen</h2><div class="card rec"><div class="rk">🏋️ ${REC.tren_t}</div><div class="rb">${REC.tren_b}</div><div class="rk" style="margin-top:10px">🍽️ ${REC.mat_t}</div><div class="rb">${REC.mat_b}</div><div class="muted small" style="margin-top:9px;border-top:1px solid var(--line);padding-top:7px">Forslag ut fra dine mål og recovery — ikke medisinsk råd. Forutsetter legeklarering.</div></div>`}
+ document.getElementById('p-idag').innerHTML=h;
+}
+function plannedFor(day){const wd=(toDate(day).getDay()+6)%7;return PLANMAL[String(wd)]||null}
+function doneFor(day){const w=WK.filter(x=>x.d===day);const sty=(STY[day]||[]).length>0;let type=null;if(sty)type='styrke';else if(w.length){const t=w.map(x=>x.t).join(' ');type=/Styrke/.test(t)?'styrke':'kondis'}return{workouts:w,sty,type}}
+function todayTraining(day){
+ const pl=plannedFor(day),dn=doneFor(day);let h='<div class="card">';
+ if(pl)h+=`<div class="li"><div><div class="nm">Planlagt: ${pl.tittel}</div><div class="dt">${DAG[toDate(day).getDay()]}</div></div><span class="pill ${pl.type}">${pl.type}</span></div>`;
+ if(dn.workouts.length||dn.sty){
+  dn.workouts.forEach((x,i)=>{h+=`<div class="li tap" onclick="tgl('td${i}')"><div><div class="nm">✓ ${x.t} <span class="muted">▾</span></div><div class="dt">${x.km?fmt(x.km,1)+' km · ':''}${x.hr?'snittpuls '+x.hr:''}</div></div><div class="rt"><div class="b">${fmt(x.m,0)} min</div><div class="dt">${x.kc?x.kc+' kcal':''}</div></div></div><div id="td${i}" style="display:none">${woDetail(x)}</div>`});
+  if(dn.sty){h+=`<div class="li"><div class="nm">✓ Styrke loggført (${(STY[day]||[]).length} øvelser)</div><span class="pill ok">gjort</span></div>`;(STY[day]||[]).forEach(e=>{h+=`<div class="ex"><b>${e.o}</b> <span class="muted">${e.s}×${e.r}${e.v?' · '+e.v+' kg':' · RIR '+e.rir}</span></div>`})}
+ }else{h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`}
+ h+='</div>';return h;
+}
+
+/* ================= PAGE: TRENING ================= */
+function pageTrening(){
+ let h='<div class="pagetitle">Trening</div><div class="pagesub">7-dagers plan · planlagt vs. gjennomført · progresjon</div>';
+ // week ahead
+ h+='<h2 class="sh">Uke framover</h2>';
+ PLAN.forEach((p,i)=>{
+  const dn=doneFor(p.dato);const done=dn.workouts.length||dn.sty;const past=p.dato<fromDate(new Date());
+  h+=`<div class="card tight tap" onclick="tgl('pl${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${p.ukedag} · ${labelDay(p.dato)}</div><div class="dt">${p.tittel}</div></div><div style="text-align:right"><span class="pill ${p.type}">${p.type}</span>${past?(done?' <span class="pill ok">✓</span>':' <span class="pill miss">–</span>'):''}</div></div>`;
+  h+=`<div id="pl${i}" style="display:none;margin-top:8px"><div class="muted small" style="margin-bottom:6px">${p.fokus}</div>`;
+  if(p.ov&&p.ov.length)p.ov.forEach(o=>h+=`<div class="ex">${o}</div>`);
+  else h+=`<div class="ex muted">${p.type==='kondis'?'Sone 2 — snakke-tempo. Løp maks annenhver dag (leddvern).':'Hvile / lett mobilitet.'}</div>`;
+  if(p.type==='styrke')h+=`<div class="muted small" style="margin-top:6px">Høyre arm: nøytralt grep, 2–3 reps i reserve, smertefri bane (supraspinatus/biceps).</div>`;
+  h+='</div></div>';
+ });
+ // adherence last 14 days
+ h+='<h2 class="sh">Planlagt vs. gjennomført (14 d)</h2><div class="card">';
+ let done=0,tot=0;const cells=[];
+ for(let i=13;i>=0;i--){const day=addDays(maxD,-i);const pl=plannedFor(day),dn=doneFor(day);const rest=pl&&pl.type==='hvile';const d=dn.workouts.length||dn.sty;if(!rest)tot++;if(d&&!rest)done++;
+  const c=rest?'var(--dim)':(d?'var(--good)':'var(--warn)');cells.push(`<div title="${day}" style="flex:1;height:26px;border-radius:5px;background:${c};opacity:${rest?.3:.9}"></div>`)}
+ h+=`<div style="display:flex;gap:3px;margin-bottom:8px">${cells.join('')}</div><div class="muted small">Etterlevelse: <b style="color:var(--ink)">${tot?Math.round(done/tot*100):0}%</b> (${done}/${tot} planlagte økter gjennomført). Grønn = gjort · rød = uteblitt · grå = hviledag.</div></div>`;
+ // volume trend
+ const mv=monthVolume();
+ h+='<h2 class="sh">Treningsvolum (økter/mnd)</h2><div class="card">'+barChart(mv.labels,mv.counts)+'</div>';
+ document.getElementById('p-trening').innerHTML=h;
+}
+function monthVolume(){const m={};WK.forEach(x=>{const k=x.d.slice(0,7);m[k]=(m[k]||0)+1});const labels=Object.keys(m).sort().slice(-14);return{labels,counts:labels.map(l=>m[l])}}
+function barChart(labels,counts){if(!counts.length)return '<div class="muted small">ingen data</div>';const W=320,H=120,pl=6,pb=16,pt=8;const mx=Math.max(1,...counts),n=counts.length,bw=(W-2*pl)/n*.72;const X=i=>pl+(i+.5)*((W-2*pl)/n),Y=v=>pt+(1-v/mx)*(H-pt-pb);let s='';counts.forEach((v,i)=>{const hh=(H-pt-pb)-(Y(v)-pt);s+=`<rect x="${(X(i)-bw/2).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" rx="2" fill="url(#g)"><title>${labels[i]}: ${v}</title></rect>`});return `<svg class="chart" viewBox="0 0 ${W} ${H}" style="height:${H}px"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>${s}<text x="${pl}" y="${H-3}" fill="var(--dim)" font-size="9">${labels[0]}</text><text x="${W-pl}" y="${H-3}" fill="var(--dim)" font-size="9" text-anchor="end">${labels[n-1]}</text></svg>`}
+
+/* ================= PAGE: DATA ================= */
+let dMetric='w', dGran='uke', dAnchor=maxD;
+function clampD(s){return s<minD?minD:(s>maxD?maxD:s)}
+function clampYear(y){const lo=+minD.slice(0,4),hi=+maxD.slice(0,4);return (y<lo?lo:(y>hi?hi:y))+'-06-15'}
+function longSeries(k){const grp={};R.forEach(r=>{if(r[k]==null)return;(grp[r.d.slice(0,4)]=grp[r.d.slice(0,4)]||[]).push(r[k])});const av=a=>MK[k].agg==='last'?a[a.length-1]:a.reduce((x,y)=>x+y,0)/a.length;return Object.keys(grp).sort().map(y=>[y,av(grp[y])])}
+function dataSeries(){
+ const k=dMetric,g=dGran,a=dAnchor,av=arr=>MK[k].agg==='last'?arr[arr.length-1]:arr.reduce((x,y)=>x+y,0)/arr.length;
+ let series=[],label='';
+ if(g==='dag'){const days=[...Array(7)].map((_,i)=>addDays(a,i-6));series=days.map(d=>[d.slice(8), (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label=toDate(a).getDate()+'. '+MONF[toDate(a).getMonth()].toLowerCase()+' '+a.slice(0,4);}
+ else if(g==='uke'){const m=monday(a);const DD=['ma','ti','on','to','fr','lø','sø'];const days=[...Array(7)].map((_,i)=>addDays(m,i));series=days.map((d,i)=>[DD[i], (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label='Uke '+isoWeek(m)+' · '+m.slice(0,4);}
+ else if(g==='mnd'){const ym=a.slice(0,7);const rs=R.filter(r=>r.d.slice(0,7)===ym&&r[k]!=null);series=rs.map(r=>[r.d.slice(8),r[k]]);label=MONF[+ym.slice(5,7)-1]+' '+ym.slice(0,4);}
+ else if(g==='aar'){const y=a.slice(0,4);const grp={};R.forEach(r=>{if(r.d.slice(0,4)!==y||r[k]==null)return;(grp[r.d.slice(0,7)]=grp[r.d.slice(0,7)]||[]).push(r[k])});series=Object.keys(grp).sort().map(key=>[MON[+key.slice(5,7)-1],av(grp[key])]);label=y;}
+ else {const grp={};R.forEach(r=>{if(r[k]==null)return;(grp[r.d.slice(0,7)]=grp[r.d.slice(0,7)]||[]).push(r[k])});series=Object.keys(grp).sort().map(key=>[key.slice(2),av(grp[key])]);label='Hele perioden';}
+ return {series,label};
+}
+function navP(dir){
+ if(dGran==='dag')dAnchor=clampD(addDays(dAnchor,dir));
+ else if(dGran==='uke')dAnchor=clampD(addDays(monday(dAnchor),7*dir));
+ else if(dGran==='mnd'){const t=toDate(dAnchor.slice(0,7)+'-01');t.setMonth(t.getMonth()+dir);dAnchor=clampD(fromDate(t))}
+ else if(dGran==='aar')dAnchor=clampD(clampYear(+dAnchor.slice(0,4)+dir));
+ drawData();
+}
+function pageData(){
+ let h='<div class="pagetitle">Data</div><div class="pagesub">Velg måling og periode</div>';
+ h+='<div class="selrow"><select id="dm" onchange="dMetric=this.value;drawData()">'+METRICS.map(m=>`<option value="${m.k}" ${m.k===dMetric?'selected':''}>${m.t}</option>`).join('')+'</select>';
+ h+='<div class="seg2" id="dg">'+[['dag','Dag'],['uke','Uke'],['mnd','Mnd'],['aar','År'],['alle','Alle']].map(([g,l])=>`<button data-g="${g}" class="${g===dGran?'on':''}" onclick="dGran='${g}';dAnchor=maxD;drawData()">${l}</button>`).join('')+'</div></div>';
+ h+='<div class="nav" id="dnav" style="margin:8px 4px;gap:6px"><button class="navbtn" onclick="navP(-1)">‹</button><span id="dlabel" style="flex:1;text-align:center;font-weight:750;font-size:15px"></span><button class="navbtn" onclick="navP(1)">›</button><button class="navbtn" style="width:auto;padding:0 13px;color:var(--acc);font-size:13px;font-weight:700" onclick="dAnchor=maxD;drawData()">Nå</button></div>';
+ h+='<div id="dout"></div>';
+ document.getElementById('p-data').innerHTML=h;drawData();
+}
+function drawData(){
+ const m=MK[dMetric];document.querySelectorAll('#dg button').forEach(b=>b.classList.toggle('on',b.dataset.g===dGran));
+ const nav=document.getElementById('dnav');if(nav)nav.style.display=(dGran==='alle')?'none':'flex';
+ const {series,label}=dataSeries();const dl=document.getElementById('dlabel');if(dl)dl.textContent=label;
+ const arr=series.map(p=>p[1]).filter(x=>x!=null);const st=stat(arr);
+ let big;if(dGran==='dag'){const v=byDate[dAnchor]&&byDate[dAnchor][dMetric];big=(v!=null)?v:null}else big=st?(m.agg==='last'?st.last:st.mean):null;
+ const topright=(dGran==='dag')?'':(st?('snitt '+fmt(st.mean,m.d)+'<br>'+fmt(st.min,m.d)+'–'+fmt(st.max,m.d)):'');
+ let h=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><div><div class="muted small">${m.t}${dGran==='dag'?' · i dag':''}</div><div style="font-size:26px;font-weight:850">${fmt(big,m.d)}<small class="muted" style="font-size:13px"> ${m.u}</small></div></div><div class="muted small" style="text-align:right">${topright}</div></div>`;
+ if(arr.length>=2){h+=`<div class="tap" onclick="openFull(dataSeries().series,MK[dMetric].t,MK[dMetric].u,MK[dMetric].hb)">${lineChart(series,m.hb,150)}</div><div class="taphint">👆 Trykk for fullskjerm + dra-markør${dGran==='dag'?' · viser siste 7 dager':''}</div>`;}
+ else h+=`<div class="muted small center" style="padding:14px">${arr.length===1?'Én måling i perioden.':'Ingen data i denne perioden.'}</div>`;
+ h+='</div>'+analysisCard(dMetric,arr);
+ document.getElementById('dout').innerHTML=h;
+}
+function analysisCard(k,arr){
+ const st=stat(arr);if(!st)return '';const m=MK[k];const rules={
+  w:s=>['Følg ukesnittet, ikke enkeltdager (væske svinger). Mål ~90 kg — definisjon, ikke størrelse.'],
+  rhr:s=>[s.mean<60?'Lavt/atletisk-nært — godt tegn.':s.mean<=75?'Innenfor normalt (60–100).':s.mean<=90?'Øvre halvdel — følg trenden.':'Høyt — ta med til lege.','Stigende hvilepuls over uker er viktigst å merke seg.'],
+  hrv:s=>['Din egen baseline betyr mest. Fallende = mindre restitusjon; se mot søvn + hvilepuls.'],
+  sl:s=>[s.mean>=7?'Innenfor anbefalt 7–9 t.':s.mean>=6?'Litt under anbefalt.':'Under 6 t = kronisk kort søvn; påvirker HRV, puls, appetitt.'],
+  vo2:s=>[s.mean<30?'Lavt for 60 år — men responderer best på jevn kondis.':s.mean<35?'Under middels — stigende er målet.':'Middels/godt for alderen.'],
+  bps:s=>[s.mean<120?'Normalt (<120).':s.mean<130?'Litt forhøyet.':s.mean<140?'Forhøyet trinn 1.':'Høyt (≥140) — ta med til lege.','Enkeltmålinger svinger; trend + legens måling teller.'],
+  prm:s=>[s.mean<120?'Under mål (150–180 g). Protein bevarer muskel i underskudd — prioriter.':s.mean<150?'Litt under mål.':'På/over mål — bra for muskelbevaring.'],
+  kcm:s=>[s.mean<1600?'Under ramme (~1950). Ikke for stramt på treningsdager.':s.mean<=2100?'Innenfor ramme.':'Over ramme — juster ned hvis vekta står.'],
+ };
+ const body=(rules[k]||(()=>['Måledata over valgt periode.']))(st);
+ return `<div class="card"><div class="rk" style="font-weight:800">🔎 Analyse</div><div class="muted small" style="margin:4px 0">Snitt ${fmt(st.mean,m.d)} ${m.u} · spenn ${fmt(st.min,m.d)}–${fmt(st.max,m.d)} · ${st.n} punkt</div><ul style="margin:6px 0 2px;padding-left:18px">${body.map(t=>`<li style="font-size:13px;margin:3px 0">${t}</li>`).join('')}</ul><div class="muted" style="font-size:11px;border-top:1px solid var(--line);margin-top:8px;padding-top:6px">Måledata-tolkning, ikke diagnose.</div></div>`;
+}
+
+/* ================= PAGE: KROPP ================= */
+function pageKropp(){
+ let h='<div class="pagetitle">Kropp & hjerte</div><div class="pagesub">Langtid · 12 års historikk</div>';
+ const cards=[['w','Vekt',false],['bps','Blodtrykk systolisk',false],['rhr','Hvilepuls',false],['hrv','HRV natt',true],['vo2','VO₂max',true],['o2','SpO₂',true]];
+ // BP special: latest sys/dia
+ const bl=lastVal('bps',false),dl=lastVal('bpd',false);
+ h+=`<div class="grid g3"><div class="stat" onclick="go('data','w')"><div class="k">Vekt nå</div><div class="v">${fmt(lastVal('w',false).v,1)}</div></div><div class="stat" onclick="go('data','bps')"><div class="k">Blodtrykk</div><div class="v" style="font-size:18px">${bl.v?Math.round(bl.v)+'/'+Math.round(dl.v||0):'–'}</div></div><div class="stat" onclick="go('data','vo2')"><div class="k">VO₂max</div><div class="v">${fmt(lastVal('vo2',false).v,1)}</div></div></div>`;
+ cards.forEach(([k,t,hb])=>{const s=longSeries(k);if(!s.filter(p=>p[1]!=null).length)return;const st=stat(s.map(p=>p[1]).filter(x=>x!=null));h+=`<h2 class="sh">${t}</h2><div class="card"><div class="muted small">${st?fmt(st.min,MK[k].d)+'–'+fmt(st.max,MK[k].d)+' '+MK[k].u+' · snitt '+fmt(st.mean,MK[k].d):''}</div><div class="tap" onclick="openFull(longSeries('${k}'),'${t}',MK['${k}'].u,${hb})">${lineChart(s,hb,130)}</div><div class="taphint">👆 Trykk for fullskjerm (per år)</div></div>`});
+ document.getElementById('p-kropp').innerHTML=h;
+}
+
+/* ================= PAGE: KOSTHOLD ================= */
+function pageKost(){
+ let h='<div class="pagetitle">Kosthold</div><div class="pagesub">Mål: ~'+MAAL.kcal+' kcal · '+MAAL.protein+' g protein</div>';
+ // find last day with food
+ let fday=null;for(let i=R.length-1;i>=0;i--){if(FOOD[R[i].d]){fday=R[i].d;break}}
+ if(fday){const items=FOOD[fday];const tk=items.reduce((a,b)=>a+(+b.k||0),0),tp=items.reduce((a,b)=>a+(+b.p||0),0);
+  h+=`<h2 class="sh">Siste loggførte dag · ${labelDay(fday)}</h2>`;
+  h+=`<div class="grid"><div class="stat"><div class="k">Kalorier</div><div class="v">${fmt(tk,0)}<small>/${MAAL.kcal}</small></div>${bar(tk,MAAL.kcal)}</div><div class="stat"><div class="k">Protein</div><div class="v">${fmt(tp,0)}<small>/${MAAL.protein} g</small></div>${bar(tp,MAAL.protein)}</div></div>`;
+  h+='<div class="card">'+items.map(f=>`<div class="li"><div class="nm" style="font-weight:550">${f.n}</div><div class="rt"><div class="b">${Math.round(f.k||0)} kcal</div><div class="dt">${fmt(f.p,1)} g protein</div></div></div>`).join('')+'</div>';
+ }else h+='<div class="card muted small center" style="padding:20px">Ingen kosthold logget ennå. Fortell Claude hva du spiser, så føres det inn.</div>';
+ // protein trend where logged
+ const ps=R.filter(r=>r.prm!=null).map(r=>[r.d.slice(5),r.prm]);
+ if(ps.length>1){h+='<h2 class="sh">Protein-trend (loggførte dager)</h2><div class="card">'+lineChart(ps,true,110)+'<div class="muted small" style="margin-top:6px">Mål-linje: '+MAAL.protein+' g. Protein bevarer muskel når du går ned i vekt.</div></div>'}
+ document.getElementById('p-kost').innerHTML=h;
+}
+function bar(v,max){const p=Math.min(100,v/max*100);const c=p>=90?'var(--good)':p>=60?'var(--energy)':'var(--warn)';return `<div style="height:5px;background:var(--card2);border-radius:3px;margin-top:7px;overflow:hidden"><div style="width:${p}%;height:100%;background:${c}"></div></div>`}
+
+/* ================= FULLSKJERM-GRAF med markør ================= */
+let apx=null;
+function openFull(series,title,unit,hb){
+ if(!series||series.length<2||typeof ApexCharts==='undefined')return;
+ const el=document.getElementById('cmodal');el.className='cmodal on';
+ el.innerHTML=`<div class="chead"><div class="ctitle">${title}</div><button class="cclose" onclick="closeFull()">✕</button></div><div class="cwrap" id="cwrap" style="padding:4px"></div><div class="chelp">Dra fingeren for verdi · knip for å zoome · dobbelttrykk nullstiller</div>`;
+ const data=series.map(p=>({x:p[0],y:(p[1]==null?null:Math.round(p[1]*100)/100)}));
+ const col=(hb===false)?'#ff9f43':'#5b8cff', u=unit||'';
+ apx=new ApexCharts(document.getElementById('cwrap'),{
+  chart:{type:'area',height:'100%',background:'transparent',foreColor:'#8b98ad',toolbar:{show:false},zoom:{enabled:true,type:'x',autoScaleYaxis:true},animations:{enabled:false},fontFamily:'-apple-system,sans-serif'},
+  theme:{mode:'dark'},
+  series:[{name:title,data}],
+  colors:[col],
+  stroke:{width:2.5,curve:'straight'},
+  fill:{type:'gradient',gradient:{shadeIntensity:1,opacityFrom:.4,opacityTo:0,stops:[0,100]}},
+  dataLabels:{enabled:false},markers:{size:0,hover:{size:6}},
+  grid:{borderColor:'#26303f',strokeDashArray:3,padding:{left:8,right:8}},
+  xaxis:{type:'category',tickAmount:6,tickPlacement:'on',labels:{rotate:0,hideOverlappingLabels:true,style:{fontSize:'10px'}},axisTicks:{show:false},axisBorder:{show:false},crosshairs:{show:true,stroke:{color:col,width:1,dashArray:4}},tooltip:{enabled:false}},
+  yaxis:{tickAmount:5,labels:{formatter:v=>(Math.round(v*10)/10).toLocaleString('no'),style:{fontSize:'10px'}}},
+  tooltip:{theme:'dark',x:{show:true},y:{formatter:v=>fmt(v,1)+' '+u,title:{formatter:()=>title+': '}},marker:{show:true}},
+ });
+ apx.render();
+}
+function closeFull(){if(apx){try{apx.destroy()}catch(e){}apx=null}const el=document.getElementById('cmodal');el.className='cmodal';el.innerHTML=''}
+
+/* ================= ROUTER ================= */
+const PAGES={idag:pageIdag,trening:pageTrening,data:pageData,kropp:pageKropp,kost:pageKost};
+function show(p){document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));document.getElementById('p-'+p).classList.add('on');document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===p));try{PAGES[p]()}catch(e){document.getElementById('p-'+p).innerHTML='<div class="card warn">Feil: '+e.message+'</div>'}window.scrollTo(0,0)}
+function go(p,metric){if(metric){dMetric=metric}show(p)}
+document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>show(a.dataset.p)));
+function boot(data){
+ DATA=data;R=DATA.daily||[];WK=DATA.workouts||[];FOOD=DATA.food||{};STY=DATA.styrke||{};
+ PLAN=DATA.ukeplan||[];PLANMAL=DATA.planmal||{};REC=DATA.anbefaling;MAAL=DATA.maal||MAAL;
+ byDate=Object.fromEntries(R.map(r=>[r.d,r]));minD=R[0].d;maxD=R[R.length-1].d;
+ document.getElementById('hsub').textContent=`${DATA.meta.days} dager · ${DATA.meta.workouts} økter · oppdatert ${DATA.meta.updated}`;
+ document.getElementById('shell').style.display='none';document.getElementById('nav').style.display='flex';
+ show('idag');
+}
+async function gunzipB64(b64){const bin=atob(b64),by=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);const st=new Blob([by]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(st).text());}
+function shellMsg(html){const s=document.getElementById('shell');s.innerHTML=html;s.style.display='flex';document.getElementById('nav').style.display='none';}
+async function loadData(){
+ shellMsg('<div class="lbox"><div class="spin"></div><div class="muted">Henter helsedata…</div></div>');
+ const {data,error}=await sb.rpc('helse_snapshot');
+ if(error||!data){showLogin('Kunne ikke hente data'+(error?': '+error.message:'.'));return;}
+ try{boot(await gunzipB64(data));}catch(e){shellMsg('<div class="lbox"><div class="muted">Feil ved lasting: '+e.message+'</div></div>');}
+}
+function showLogin(msg){
+ shellMsg(`<div class="login"><div class="mono2">TH</div><h1>Terje · Helse</h1><p class="muted small">Logg inn for å se dataene</p>${msg?'<div class="lerr">'+msg+'</div>':''}<input id="lem" type="email" placeholder="E-post" value="terje@hystad.me" autocapitalize="off" autocomplete="username"><input id="lpw" type="password" placeholder="Passord" autocomplete="current-password"><button id="lbtn" onclick="doLogin()">Logg inn</button></div>`);
+}
+async function doLogin(){
+ const em=document.getElementById('lem').value.trim(),pw=document.getElementById('lpw').value;
+ const b=document.getElementById('lbtn');if(b){b.textContent='…';b.disabled=true;}
+ let r=await sb.auth.signInWithPassword({email:em,password:pw});
+ if(r.error&&/invalid/i.test(r.error.message||'')){
+  const su=await sb.auth.signUp({email:em,password:pw});
+  if(su.error){showLogin(su.error.message);return;}
+  if(su.data&&su.data.session){loadData();return;}
+  showLogin('Konto opprettet. Sjekk e-posten og bekreft, deretter logg inn.');return;
+ }
+ if(r.error){showLogin(r.error.message);return;}
+ loadData();
+}
+async function initApp(){
+ if(!window.supabase){shellMsg('<div class="lbox"><div class="muted">Innlogging utilgjengelig.</div></div>');return;}
+ sb=window.supabase.createClient(SBURL,SBKEY);
+ const {data:{session}}=await sb.auth.getSession();
+ if(session)loadData();else showLogin('');
+}
+initApp();
+</script></body></html>
