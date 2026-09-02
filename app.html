@@ -422,7 +422,7 @@ async function loadData(){
  try{boot(await gunzipB64(data));}catch(e){shellMsg('<div class="lbox"><div class="muted">Feil ved lasting: '+e.message+'</div></div>');}
 }
 function showLogin(msg){
- shellMsg(`<div class="login"><div class="mono2">TH</div><h1>Terje · Helse</h1><p class="muted small">Logg inn for å se dataene</p>${msg?'<div class="lerr">'+msg+'</div>':''}<input id="lem" type="email" placeholder="E-post" value="terje@hystad.me" autocapitalize="off" autocomplete="username"><input id="lpw" type="password" placeholder="Passord" autocomplete="current-password"><button id="lbtn" onclick="doLogin()">Logg inn</button></div>`);
+ shellMsg(`<div class="login"><div class="mono2">TH</div><h1>Terje · Helse</h1><p class="muted small">Logg inn for å se dataene</p>${msg?'<div class="lerr">'+msg+'</div>':''}<input id="lem" type="email" placeholder="E-post" value="terje@hystad.me" autocapitalize="off" autocomplete="username"><input id="lpw" type="password" placeholder="Passord" autocomplete="current-password"><label class="showpw"><input type="checkbox" onchange="document.getElementById('lpw').type=this.checked?'text':'password'"> Vis passord</label><button id="lbtn" onclick="doLogin()">Logg inn</button></div>`);
 }
 async function doLogin(){
  const em=document.getElementById('lem').value.trim(),pw=document.getElementById('lpw').value;
