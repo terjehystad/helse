@@ -1,0 +1,18 @@
+# helse.terjehystad.com
+DirectoryIndex index.php index.html
+
+# Data-appen og hemmeligheten skal ALDRI hentes direkte over HTTP.
+# index.php leser app.html fra filsystemet (readfile) etter innlogging.
+<Files "app.html">
+  Require all denied
+</Files>
+<Files "secret.php">
+  Require all denied
+</Files>
+
+# Sikkerhetsnett (FASE 1): Basic Auth beholdes til PHP-innlogging er verifisert.
+# Fjernes i FASE 2 slik at hjem-skjerm-appen (PWA) kan bruke cookie-innlogging.
+AuthType Basic
+AuthName "Helse"
+AuthUserFile "/home/u791129952/domains/terjehystad.com/public_html/helse/.htpasswd"
+Require valid-user
