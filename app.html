@@ -148,7 +148,7 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 </nav>
 <script>
 const SBURL="https://eqexsfwedreefqkiujge.supabase.co", SBKEY="sb_publishable_gKpTafEl4sGFCH3j4vfDqA_Majh7uZP";
-let DATA={meta:{}}, R=[], WK=[], FOOD={}, STY={}, PLAN=[], PLANMAL={}, REC=null, MAAL={kcal:1950,protein:165,vekt:90};
+let DATA={meta:{}}, R=[], WK=[], FOOD={}, STY={}, PLAN=[], PLANMAL={}, FASE=null, REC=null, MAAL={kcal:1950,protein:165,vekt:90};
 let byDate={}, minD="", maxD="", sb=null;
 const MON=['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
 const MONF=['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
@@ -213,16 +213,20 @@ function tgl(id){const e=document.getElementById(id);if(e)e.style.display=e.styl
 
 /* ---------- readiness ---------- */
 function readiness(){
- const l=lastVal('sl',false),h=lastVal('hrv',false),rp=lastVal('rhr',false);
+ const l=lastVal('sl',false),h=lastVal('hrv',false),rp=lastVal('rhr',false),dpv=lastVal('dp',false);
  const hb=windowMean('hrv',30),rb=windowMean('rhr',30);
- let sc=[],parts=[];
- if(l.v!=null){const s=Math.max(0,Math.min(1,(l.v-4)/(7.5-4)));sc.push(s);parts.push(['Søvn',fmt(l.v,1)+' t'])}
- if(h.v!=null&&hb){const s=Math.max(0,Math.min(1,h.v/(hb*1.15)));sc.push(s);parts.push(['HRV',Math.round(h.v)+' ms'])}
- if(rp.v!=null&&rb){const s=Math.max(0,Math.min(1,rb/rp.v));sc.push(s);parts.push(['Hvilepuls',Math.round(rp.v)])}
- const score=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length*100):null;
+ // Vekting fra langtidsanalysen: hvilepuls tyngst (r −0,65), så HRV + dyp søvn, totalsøvn minst.
+ let num=0,den=0,parts=[],drv=[];
+ function add(w,s,label,val){num+=w*s;den+=w;parts.push([label,val]);drv.push([s,label]);}
+ if(rp.v!=null&&rb)add(3,Math.max(0,Math.min(1,rb/rp.v)),'Hvilepuls',Math.round(rp.v));
+ if(h.v!=null&&hb)add(2,Math.max(0,Math.min(1,h.v/(hb*1.1))),'HRV',Math.round(h.v)+' ms');
+ if(dpv.v!=null)add(2,Math.max(0,Math.min(1,dpv.v/1.2)),'Dyp søvn',fmt(dpv.v,1)+' t');
+ if(l.v!=null)add(1,Math.max(0,Math.min(1,(l.v-4)/(7.5-4))),'Søvn',fmt(l.v,1)+' t');
+ const score=den?Math.round(num/den*100):null;
+ let note='';if(drv.length){drv.sort((a,b)=>a[0]-b[0]);note=drv[0][0]<0.6?('Trekkes ned av '+drv[0][1].toLowerCase()+'.'):'Bryterne peker riktig vei.';}
  let lab='—',col='var(--mut)';
  if(score!=null){if(score>=70){lab='Klar for økt';col='var(--good)'}else if(score>=50){lab='Moderat — hold igjen litt';col='var(--energy)'}else{lab='Ta det rolig i dag';col='var(--warn)'}}
- return{score,lab,col,parts,date:l.d||h.d||rp.d};
+ return{score,lab,col,parts,note,date:l.d||h.d||rp.d};
 }
 function ring(score,col){const r=44,c=2*Math.PI*r,off=c*(1-(score||0)/100);return `<svg viewBox="0 0 104 104" style="width:104px;height:104px"><circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--card2)" stroke-width="9"/><circle cx="52" cy="52" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 52 52)"/></svg>`}
 
@@ -234,7 +238,7 @@ function pageIdag(){
  const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
  let h='';
  h+=`<div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div>`;
- h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div></div></div>`;
+ h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div>${rd.note?'<div class="muted small" style="margin-top:5px">'+rd.note+'</div>':''}</div></div>`;
  // vital summary
  h+='<h2 class="sh">Nøkkeltall</h2><div class="grid">';
  [['w','Vekt'],['rhr','Hvilepuls'],['hrv','HRV natt'],['sl','Søvn'],['st','Skritt'],['ae','Aktiv energi']].forEach(([k,t])=>{
@@ -256,12 +260,11 @@ function pageIdag(){
 function plannedFor(day){const wd=(toDate(day).getDay()+6)%7;return PLANMAL[String(wd)]||null}
 function doneFor(day){const w=WK.filter(x=>x.d===day);const sty=(STY[day]||[]).length>0;let type=null;if(sty)type='styrke';else if(w.length){const t=w.map(x=>x.t).join(' ');type=/Styrke/.test(t)?'styrke':'kondis'}return{workouts:w,sty,type}}
 function todayTraining(day){
- const pl=plannedFor(day),dn=doneFor(day);let h='<div class="card">';
- if(pl)h+=`<div class="li"><div><div class="nm">Planlagt: ${pl.tittel}</div><div class="dt">${DAG[toDate(day).getDay()]}</div></div><span class="pill ${pl.type}">${pl.type}</span></div>`;
+ const dn=doneFor(day);let h='<div class="card">';
  if(dn.workouts.length||dn.sty){
   dn.workouts.forEach((x,i)=>{h+=`<div class="li tap" onclick="tgl('td${i}')"><div><div class="nm">✓ ${x.t} <span class="muted">▾</span></div><div class="dt">${x.km?fmt(x.km,1)+' km · ':''}${x.hr?'snittpuls '+x.hr:''}</div></div><div class="rt"><div class="b">${fmt(x.m,0)} min</div><div class="dt">${x.kc?x.kc+' kcal':''}</div></div></div><div id="td${i}" style="display:none">${woDetail(x)}</div>`});
   if(dn.sty){h+=`<div class="li"><div class="nm">✓ Styrke loggført (${(STY[day]||[]).length} øvelser)</div><span class="pill ok">gjort</span></div>`;(STY[day]||[]).forEach(e=>{h+=`<div class="ex"><b>${e.o}</b> <span class="muted">${e.s}×${e.r}${e.v?' · '+e.v+' kg':' · RIR '+e.rir}</span></div>`})}
- }else{h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`}
+ }else{if(FASE){const n=FASE.rotasjon[nextStrengthIdx()];h+=`<div class="li"><div><div class="nm">Neste økt: ${n.tittel}</div><div class="dt">styrke · eller restitusjon Zone 2</div></div><span class="pill styrke">forslag</span></div>`}h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`}
  h+='</div>';return h;
 }
 
@@ -272,23 +275,21 @@ function pageTrening(){
  h+=(trTab==='trening')?treningLogg():planVisning();
  document.getElementById('p-trening').innerHTML=h;window.scrollTo(0,0);
 }
+function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE||d>=FASE.start)s.add(d)});WK.forEach(w=>{if(/Styrke/i.test(w.t)&&(!FASE||w.d>=FASE.start))s.add(w.d)});return [...s].sort();}
+function faseUke(){if(!FASE)return 1;const dgr=Math.floor((toDate(maxD)-toDate(FASE.start))/86400000);return Math.min(FASE.uker,Math.max(1,Math.floor(dgr/7)+1));}
+function nextStrengthIdx(){if(!FASE)return 0;return strengthDays().length%FASE.rotasjon.length;}
 function planVisning(){
- let h='<div class="pagesub" style="margin-top:-8px">7-dagers plan · planlagt vs. gjennomført · progresjon</div>';
- h+='<h2 class="sh">Uke framover</h2>';
- PLAN.forEach((p,i)=>{
-  const dn=doneFor(p.dato);const done=dn.workouts.length||dn.sty;const past=p.dato<fromDate(new Date());
-  h+=`<div class="card tight tap" onclick="tgl('pl${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${p.ukedag} · ${labelDay(p.dato)}</div><div class="dt">${p.tittel}</div></div><div style="text-align:right"><span class="pill ${p.type}">${p.type}</span>${past?(done?' <span class="pill ok">✓</span>':' <span class="pill miss">–</span>'):''}</div></div>`;
-  h+=`<div id="pl${i}" style="display:none;margin-top:8px"><div class="muted small" style="margin-bottom:6px">${p.fokus}</div>`;
-  if(p.ov&&p.ov.length)p.ov.forEach(o=>h+=`<div class="ex">${o}</div>`);
-  else h+=`<div class="ex muted">${p.type==='kondis'?'Sone 2 — snakke-tempo. Løp maks annenhver dag (leddvern).':'Hvile / lett mobilitet.'}</div>`;
-  if(p.type==='styrke')h+=`<div class="muted small" style="margin-top:6px">Høyre arm: nøytralt grep, 2–3 reps i reserve, smertefri bane (supraspinatus/biceps).</div>`;
-  h+='</div></div>';
- });
- h+='<h2 class="sh">Planlagt vs. gjennomført (14 d)</h2><div class="card">';
- let done=0,tot=0;const cells=[];
- for(let i=13;i>=0;i--){const day=addDays(maxD,-i);const pl=plannedFor(day),dn=doneFor(day);const rest=pl&&pl.type==='hvile';const d=dn.workouts.length||dn.sty;if(!rest)tot++;if(d&&!rest)done++;
-  const c=rest?'var(--dim)':(d?'var(--good)':'var(--warn)');cells.push(`<div title="${day}" style="flex:1;height:26px;border-radius:5px;background:${c};opacity:${rest?.3:.9}"></div>`)}
- h+=`<div style="display:flex;gap:3px;margin-bottom:8px">${cells.join('')}</div><div class="muted small">Etterlevelse: <b style="color:var(--ink)">${tot?Math.round(done/tot*100):0}%</b> (${done}/${tot} planlagte økter gjennomført). Grønn = gjort · rød = uteblitt · grå = hviledag.</div></div>`;
+ if(!FASE)return '<div class="muted small">Ingen plan.</div>';
+ const uke=faseUke(),idx=nextStrengthIdx(),neste=FASE.rotasjon[idx],gjort=strengthDays().length;
+ let h=`<div class="card" style="background:var(--grad);color:#fff;border:0"><div style="font-weight:850;font-size:18px">${FASE.navn}</div><div style="opacity:.92;font-size:13px;margin-top:2px">Uke ${uke} av ${FASE.uker} · ${gjort} styrkeøkter gjennomført</div></div>`;
+ h+='<h2 class="sh">Mål i fasen</h2><div class="card"><div class="muted small" style="margin-bottom:8px">Bygg sener, senefester og teknikk før vi legger på vekt. Tre brytere fra din egen langtidsanalyse:</div>'+FASE.brytere.map(b=>`<div class="ex">🎯 ${b}</div>`).join('')+`<div class="muted small" style="margin-top:8px">Alle øvelser: <b style="color:var(--ink)">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo}</b>. Aldri til failure.</div></div>`;
+ h+='<h2 class="sh">Neste styrkeøkt</h2>';
+ h+=`<div class="card tight tap" onclick="tgl('nst')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">🏋️ ${neste.tittel}</div><div class="dt">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo}</div></div><span class="pill styrke">neste</span></div><div id="nst" style="display:none;margin-top:8px">${neste.ov.map(o=>`<div class="ex">${o}</div>`).join('')}<div class="muted small" style="margin-top:6px">Høyre skulder/biceps: nøytralt grep, kun smertefri bane, ekstra lett — gå på følelsen, ikke tallene.</div></div></div>`;
+ h+='<h2 class="sh">Rotasjon</h2><div class="card">'+FASE.rotasjon.map((r,i)=>`<div class="ex" style="display:flex;justify-content:space-between;align-items:center"><span>${i===idx?'▶ ':'&nbsp;&nbsp;&nbsp;'}${r.tittel}</span>${i===idx?'<span class="pill styrke">neste</span>':''}</div>`).join('')+'<div class="muted small" style="margin-top:6px">Roterer ut fra det du faktisk gjør — ikke ukedag.</div></div>';
+ h+=`<h2 class="sh">Kondis</h2><div class="card"><div class="ex"><b>🌀 Restitusjon (Zone 2):</b> ${FASE.zone2}</div><div class="ex" style="margin-top:4px"><b>🔥 Tempoøkt:</b> ${FASE.tempo_okt}</div><div class="muted small" style="margin-top:6px">Aldri to løpedager på rad. Høy puls venter på legeklarering — symptomer slår app-tall.</div></div>`;
+ h+='<h2 class="sh">Aktivitet siste 14 dager</h2><div class="card">';
+ let tr=0;const cells=[];for(let i=13;i>=0;i--){const day=addDays(maxD,-i);const dn=doneFor(day);const d=dn.workouts.length||dn.sty;if(d)tr++;cells.push(`<div title="${day}" style="flex:1;height:26px;border-radius:5px;background:${d?'var(--good)':'var(--card2)'}"></div>`);}
+ h+=`<div style="display:flex;gap:3px;margin-bottom:8px">${cells.join('')}</div><div class="muted small"><b style="color:var(--ink)">${tr} av 14</b> dager med økt. Grønn = trent.</div></div>`;
  const mv=monthVolume();
  h+='<h2 class="sh">Treningsvolum (økter/mnd)</h2><div class="card">'+barChart(mv.labels,mv.counts)+'</div>';
  return h;
@@ -378,8 +379,8 @@ function drawData(){
 function analysisCard(k,arr){
  const st=stat(arr);if(!st)return '';const m=MK[k];const rules={
   w:s=>['Følg ukesnittet, ikke enkeltdager (væske svinger). Mål ~90 kg — definisjon, ikke størrelse.'],
-  rhr:s=>[s.mean<60?'Lavt/atletisk-nært — godt tegn.':s.mean<=75?'Innenfor normalt (60–100).':s.mean<=90?'Øvre halvdel — følg trenden.':'Høyt — ta med til lege.','Stigende hvilepuls over uker er viktigst å merke seg.'],
-  hrv:s=>['Din egen baseline betyr mest. Fallende = mindre restitusjon; se mot søvn + hvilepuls.'],
+  rhr:s=>[s.mean<60?'Lavt/atletisk-nært — godt tegn.':s.mean<=75?'Innenfor normalt (60–100).':s.mean<=90?'Øvre halvdel — følg trenden.':'Høyt — ta med til lege.','Hvilepuls er hovedbryteren for HRV-en din (r −0,65 i langtidsdataene) — ned i vekt + jevn kondis + god søvn drar den ned.'],
+  hrv:s=>['Din egen baseline betyr mest. Langtidsanalysen din: HRV følger mest lav hvilepuls, dyp søvn og reell treningsintensitet — ikke antall turer. Vil du løfte den: se mot hvilepuls og dyp søvn.'],
   sl:s=>[s.mean>=7?'Innenfor anbefalt 7–9 t.':s.mean>=6?'Litt under anbefalt.':'Under 6 t = kronisk kort søvn; påvirker HRV, puls, appetitt.'],
   vo2:s=>[s.mean<30?'Lavt for 60 år — men responderer best på jevn kondis.':s.mean<35?'Under middels — stigende er målet.':'Middels/godt for alderen.'],
   bps:s=>[s.mean<120?'Normalt (<120).':s.mean<130?'Litt forhøyet.':s.mean<140?'Forhøyet trinn 1.':'Høyt (≥140) — ta med til lege.','Enkeltmålinger svinger; trend + legens måling teller.'],
@@ -450,7 +451,7 @@ function go(p,metric){if(metric){dMetric=metric}show(p)}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>show(a.dataset.p)));
 function boot(data){
  DATA=data;R=DATA.daily||[];WK=DATA.workouts||[];FOOD=DATA.food||{};STY=DATA.styrke||{};
- PLAN=DATA.ukeplan||[];PLANMAL=DATA.planmal||{};REC=DATA.anbefaling;MAAL=DATA.maal||MAAL;
+ PLAN=DATA.ukeplan||[];PLANMAL=DATA.planmal||{};FASE=DATA.fase||null;REC=DATA.anbefaling;MAAL=DATA.maal||MAAL;
  byDate=Object.fromEntries(R.map(r=>[r.d,r]));minD=R[0].d;maxD=R[R.length-1].d;
  document.getElementById('hsub').textContent=`${DATA.meta.days} dager · ${DATA.meta.workouts} økter · oppdatert ${DATA.meta.updated}`;
  document.getElementById('shell').style.display='none';document.getElementById('nav').style.display='flex';
