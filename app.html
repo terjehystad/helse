@@ -432,7 +432,7 @@ function pageKost(){
   h+='<h2 class="sh">Fordeling i dag vs. mål</h2><div class="card">'+rowMac('Protein',tp,MAAL.protein,4)+rowMac('Karbo',tc,MAAL.karbo,4)+rowMac('Fett',tf,MAAL.fett,9)+`<div class="muted small" style="margin-top:6px">Kalorier ${fmt(tk,0)} / ${MAAL.kcal}. Målfordeling ≈ 34% protein · 36% karbo · 30% fett.</div></div>`;
   h+='<h2 class="sh">Det du spiste</h2><div class="card">'+items.map(f=>`<div class="li"><div class="nm" style="font-weight:550">${f.n}</div><div class="rt"><div class="b">${Math.round(f.k||0)} kcal</div><div class="dt">${fmt(f.p,1)} g protein</div></div></div>`).join('')+'</div>';
  }else h+='<div class="card muted small center" style="padding:20px">Ingen kosthold logget ennå. Fortell Claude hva du spiser, så føres det inn.</div>';
- h+='<h2 class="sh">Slik bør kosten se ut</h2><div class="card"><div class="ex"><b>Protein hvert måltid</b> — 30–40 g × 4–5 måltider = 150–180 g.</div><div class="ex"><b>Grønt rikelig</b> — volum, metthet og fiber.</div><div class="ex"><b>Karbo rundt trening</b> og tidligere på dagen.</div><div class="ex"><b>Mindre søtt sent</b> — beskytter dyp søvn (HRV-knappen).</div><div class="muted small" style="margin-top:8px"><b>Beste proteinkilder:</b> skyr/kesam/cottage cheese, kyllingfilet, kalkun, egg/eggehvite, fisk (torsk/laks/tunfisk), magert kjøtt, mysepulver, gresk yoghurt, linser/bønner.</div></div>';
+ h+='<h2 class="sh">Slik bør kosten se ut</h2><div class="card"><div class="ex"><b>Protein hvert måltid</b> — 30–40 g × 4–5 = 150–180 g.</div><div class="ex"><b>Grønt rikelig</b> · <b>karbo rundt trening</b> · <b>mindre søtt sent</b> (beskytter dyp søvn).</div><button class="lagrebtn" style="background:var(--card2);color:var(--acc);border:1px solid var(--line);margin-top:11px" onclick="visTips()">💡 Åpne proteinguide — kilder, fordeling, kcal/gram</button></div>';
  const ps=R.filter(r=>r.prm!=null).map(r=>[r.d.slice(5),r.prm]);
  if(ps.length>1){h+='<h2 class="sh">Protein-trend (loggførte dager)</h2><div class="card">'+lineChart(ps,true,110)+'<div class="muted small" style="margin-top:6px">Mål-linje: '+MAAL.protein+' g. Protein bevarer muskel når du går ned i vekt.</div></div>'}
  document.getElementById('p-kost').innerHTML=h;
@@ -463,6 +463,17 @@ function openFull(series,title,unit,hb){
  apx.render();
 }
 function closeFull(){if(apx){try{apx.destroy()}catch(e){}apx=null}const el=document.getElementById('cmodal');el.className='cmodal';el.innerHTML=''}
+function visTips(){const el=document.getElementById('cmodal');el.className='cmodal on';
+ const kilder=[['Kyllingfilet 150 g','33 g','165'],['Kalkunfilet 150 g','35 g','160'],['Torsk 150 g','27 g','120'],['Tunfisk i vann, 1 boks','26 g','110'],['Skyr 150 g','17 g','90'],['Kesam mager 150 g','17 g','100'],['Cottage cheese 150 g','18 g','145'],['Mysepulver, 1 scoop','24 g','120'],['Eggehvite × 3','11 g','51']];
+ const rad=(a,b)=>`<div class="li"><span>${a}</span><b style="white-space:nowrap">${b}</b></div>`;
+ el.innerHTML=`<div class="chead"><div class="ctitle">💡 Proteinguide</div><button class="cclose" onclick="closeFull()">✕</button></div>
+ <div style="overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px">
+  <div class="card"><div class="rk" style="font-weight:800;margin-bottom:6px">Kalorier per gram</div>${rad('Protein','4 kcal/g')}${rad('Karbo','4 kcal/g')}${rad('Fett','9 kcal/g (dobbelt så tungt)')}${rad('Alkohol','7 kcal/g')}</div>
+  <div class="card"><div class="rk" style="font-weight:800;margin-bottom:6px">Slik bør en dag se ut (~${MAAL.kcal} kcal)</div>${rad('Protein','165 g · 34%')}${rad('Karbo','175 g · 36%')}${rad('Fett','65 g · 30%')}<div class="muted small" style="margin-top:6px">Fett er «tungt» (9 kcal/g) — fløtesaus/ost/dessert spiser budsjettet fort.</div></div>
+  <div class="card"><div class="rk" style="font-weight:800;margin-bottom:6px">Beste proteinkilder — mest protein per kalori</div>${kilder.map(r=>`<div class="li"><div class="nm" style="font-weight:550">${r[0]}</div><div class="rt"><div class="b">${r[1]}</div><div class="dt">${r[2]} kcal</div></div></div>`).join('')}<div class="muted small" style="margin-top:6px">Magre kilder = mye protein, få kalorier — motsatt av ost/fløte/dessert.</div></div>
+  <div class="card"><div class="rk" style="font-weight:800;margin-bottom:6px">Tett gapet enkelt</div><div class="muted small">Mangler du ~77 g: <b style="color:var(--ink)">skyr (17) + kyllingporsjon (33) + 1 scoop myse (24) ≈ 74 g</b> oppå det du alt spiser — da når du mål uten å sprenge kaloriene.</div></div>
+  <div class="muted small center" style="padding:6px 10px 16px">Veiledende — ikke medisinsk råd.</div>
+ </div>`;}
 
 /* ================= ROUTER ================= */
 const PAGES={idag:pageIdag,trening:pageTrening,data:pageData,kropp:pageKropp,kost:pageKost};
