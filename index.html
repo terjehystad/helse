@@ -86,6 +86,9 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 .mcell{background:var(--card2);border-radius:9px;padding:7px 9px}
 .mk{font-size:10px;color:var(--mut)}
 .mv{font-size:15px;font-weight:750}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+.mrow:last-of-type{border-bottom:0}
+.mi{display:inline-block;width:15px;height:15px;line-height:14px;text-align:center;border:1px solid var(--line);border-radius:50%;color:var(--acc);font-size:10px;font-style:italic;font-weight:700;cursor:pointer;vertical-align:middle}
 .logrow{display:flex;align-items:center;gap:6px;margin:5px 0}
 .lognm{flex:1;font-size:13px}
 .loginp{width:60px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px;font-size:15px;text-align:center}
@@ -328,25 +331,33 @@ function treningLogg(){
   const rhs=w.km>0?fmt(w.km,2)+' km':(sty.length?sty.length+' øvelser':(w.kc?fmt(w.kc,0)+' kcal':''));
   h+=`<div class="card tight tap" onclick="tgl('ok${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${ikonFor(w.t)} ${w.t}</div><div class="dt">${labelDay(w.d)}${w.s?' · '+w.s:''}${w.hr?' · ♥ '+fmt(w.hr,0):''}</div></div><div style="text-align:right"><div class="nm">${w.m?fmt(w.m,0)+' min':''}</div><div class="dt">${rhs}</div></div></div>`;
   h+=`<div id="ok${i}" style="display:none;margin-top:8px">`;
-  const g=[];
-  if(w.m)g.push(['Varighet',fmt(w.m,0)+' min']);
-  if(w.km>0)g.push(['Distanse',fmt(w.km,2)+' km']);
-  if(pace)g.push(['Tempo',paceStr(pace)+' /km']);
-  if(w.hr)g.push(['Snittpuls',fmt(w.hr,0)+' bpm']);
-  if(w.hrmax)g.push(['Makspuls',fmt(w.hrmax,0)+' bpm']);
-  if(w.kc)g.push(['Kalorier',fmt(w.kc,0)+' kcal']);
-  if(w.cad)g.push(['Kadens',fmt(w.cad,0)]);
-  if(w.steps)g.push(['Skritt',fmt(w.steps,0)]);
-  if(w.up)g.push(['Stigning',fmt(w.up,0)+' m']);
-  if(w.spdmax)g.push(['Maksfart',fmt(w.spdmax,1)+' km/t']);
-  if(w.gct)g.push(['Markkontakt',fmt(w.gct,0)+' ms']);
-  if(w.vo)g.push(['Vertikal beveg.',fmt(w.vo,1)+' cm']);
-  if(w.stl)g.push(['Steglengde',fmt(w.stl,0)+' cm']);
-  if(w.vr)g.push(['Vertikal ratio',fmt(w.vr,1)+' %']);
-  if(w.pwr)g.push(['Løpseffekt',fmt(w.pwr,0)+' W']);
-  if(w.te)g.push(['Treningseffekt',fmt(w.te,1)]);
-  if(w.s&&w.e)g.push(['Klokkeslett',w.s+'–'+w.e]);
-  if(g.length)h+=`<div class="mgrid">${g.map(x=>`<div class="mcell"><div class="mk">${x[0]}</div><div class="mv">${x[1]}</div></div>`).join('')}</div>`;
+  const M=[
+   ['Varighet', w.m?fmt(w.m,0)+' min':null, 'Total tid på økta.'],
+   ['Distanse', w.km>0?fmt(w.km,2)+' km':null, 'Tilbakelagt strekning.'],
+   ['Tempo', pace?paceStr(pace)+' /km':null, 'Minutter per kilometer — lavere tall = raskere.'],
+   ['Snittpuls', w.hr?fmt(w.hr,0)+' bpm':null, 'Gjennomsnittlig hjertefrekvens. Viser hvor hardt hjertet jobbet.'],
+   ['Makspuls', w.hrmax?fmt(w.hrmax,0)+' bpm':null, 'Høyeste puls i økta.'],
+   ['Kalorier', w.kc?fmt(w.kc,0)+' kcal':null, 'Estimert energiforbruk.'],
+   ['VO₂max', w.vo2?fmt(w.vo2,0):null, 'Estimert maksimalt oksygenopptak — det viktigste kondistallet. Høyere = bedre form.'],
+   ['Treningseffekt', w.te?fmt(w.te,1)+' / 5':null, 'Hvor mye økta bygde aerob utholdenhet (skala 0–5). 3–4 = god effekt.'],
+   ['Treningsbelastning', w.tl?fmt(w.tl,0):null, 'Samlet belastning på økta. Brukes for å balansere hardt vs. lett over uka.'],
+   ['Kadens', w.cad?fmt(w.cad,0)+' spm':null, 'Skritt per minutt. Høyere (~170–180) = kortere, snillere steg og mindre støt på ledd.'],
+   ['Markkontakt', w.gct?fmt(w.gct,0)+' ms':null, 'Tid foten er i bakken per steg. Lavere = mer spenstig og effektiv. ~300 ms er vanlig, ~200 er elite.'],
+   ['Vertikal beveg.', w.vo?fmt(w.vo,1)+' cm':null, 'Hvor mye kroppen «hopper» opp/ned per steg. Lavere = mindre bortkastet energi.'],
+   ['Vertikal ratio', w.vr?fmt(w.vr,1)+' %':null, 'Vertikal bevegelse delt på steglengde. Lavere = mer fremdrift per steg.'],
+   ['Steglengde', w.stl?fmt(w.stl,0)+' cm':null, 'Lengden på hvert enkelt steg.'],
+   ['GC-balanse', w.bal?fmt(w.bal,1)+' %':null, 'Fordeling mellom venstre og høyre fot. 50 % = perfekt symmetri.'],
+   ['Løpseffekt', w.pwr?fmt(w.pwr,0)+' W':null, 'Kraften du produserer — som en wattmåler for løping. Høyere = mer arbeid.'],
+   ['Pustefrekvens', w.brs?fmt(w.brs,0)+' /min':null, 'Åndedrag per minutt gjennom økta.'],
+   ['Intensitetsmin.', w.vig?fmt(w.vig,0)+' min':null, 'Minutter i høy intensitet — teller mot ukesmålet for hjertehelse.'],
+   ['Svette (est.)', w.water?fmt(w.water,0)+' ml':null, 'Estimert væsketap. Drikk omtrent tilsvarende for å erstatte.'],
+   ['Beste km', w.bestkm?paceStr(w.bestkm/60)+' /km':null, 'Din raskeste kilometer på økta.'],
+   ['Stigning', w.up?fmt(w.up,0)+' m':null, 'Høydemeter opp totalt.'],
+   ['Maksfart', w.spdmax?fmt(w.spdmax,1)+' km/t':null, 'Høyeste hastighet i økta.'],
+   ['Skritt', w.steps?fmt(w.steps,0):null, 'Antall skritt totalt.'],
+   ['Klokkeslett', (w.s&&w.e)?w.s+'–'+w.e:null, 'Når økta startet og sluttet.'],
+  ].filter(x=>x[1]!=null);
+  if(M.length)h+='<div style="background:var(--card2);border-radius:11px;padding:2px 12px;margin-top:6px">'+M.map((x,j)=>`<div class="mrow"><span>${x[0]} <span class="mi" onclick="tgl('mi${i}_${j}')">i</span></span><b>${x[1]}</b></div><div id="mi${i}_${j}" class="muted small" style="display:none;padding:0 0 8px">${x[2]}</div>`).join('')+'</div>';
   if(w.rt&&w.rt.length>1)h+=routeSvg(w.rt)+elevSvg(w.alt);
   if(w.hrs&&w.hrs.length>1)h+=`<div class="muted small" style="margin-top:8px">Pulskurve (${Math.min(...w.hrs)}–${Math.max(...w.hrs)} bpm)</div>${hrSpark(w.hrs)}`;
   if(sty.length){h+='<div class="muted small" style="margin-top:8px">Øvelser</div>';sty.forEach(e=>h+=`<div class="ex" style="display:flex;justify-content:space-between;gap:8px"><span>${e.o}${e.n?' <span class="muted" style="font-size:11px">'+e.n+'</span>':''}</span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${e.v?e.v+' kg · ':''}${e.s}×${e.r}${e.rir?' · RIR '+e.rir:''}</span></div>`);}
