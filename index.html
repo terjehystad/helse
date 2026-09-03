@@ -339,6 +339,12 @@ function treningLogg(){
   if(w.steps)g.push(['Skritt',fmt(w.steps,0)]);
   if(w.up)g.push(['Stigning',fmt(w.up,0)+' m']);
   if(w.spdmax)g.push(['Maksfart',fmt(w.spdmax,1)+' km/t']);
+  if(w.gct)g.push(['Markkontakt',fmt(w.gct,0)+' ms']);
+  if(w.vo)g.push(['Vertikal beveg.',fmt(w.vo,1)+' cm']);
+  if(w.stl)g.push(['Steglengde',fmt(w.stl,0)+' cm']);
+  if(w.vr)g.push(['Vertikal ratio',fmt(w.vr,1)+' %']);
+  if(w.pwr)g.push(['Løpseffekt',fmt(w.pwr,0)+' W']);
+  if(w.te)g.push(['Treningseffekt',fmt(w.te,1)]);
   if(w.s&&w.e)g.push(['Klokkeslett',w.s+'–'+w.e]);
   if(g.length)h+=`<div class="mgrid">${g.map(x=>`<div class="mcell"><div class="mk">${x[0]}</div><div class="mv">${x[1]}</div></div>`).join('')}</div>`;
   if(w.rt&&w.rt.length>1)h+=routeSvg(w.rt)+elevSvg(w.alt);
