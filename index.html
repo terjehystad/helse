@@ -9,6 +9,8 @@
 <title>Terje · Helse</title>
 <script src="apexcharts.min.js"></script>
 <script src="supabase.min.js"></script>
+<link rel="stylesheet" href="leaflet.css">
+<script src="leaflet.js"></script>
 <style>
 :root{
  --bg:#0a0d13;--bg2:#0e131c;--card:#151c28;--card2:#1b2431;--line:#26303f;
@@ -89,6 +91,8 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 .mrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
 .mrow:last-of-type{border-bottom:0}
 .mi{display:inline-block;width:15px;height:15px;line-height:14px;text-align:center;border:1px solid var(--line);border-radius:50%;color:var(--acc);font-size:10px;font-style:italic;font-weight:700;cursor:pointer;vertical-align:middle}
+.lmap{height:240px;border-radius:11px;overflow:hidden;margin-top:6px;background:var(--card2)}
+.leaflet-container{background:var(--card2)}
 .logrow{display:flex;align-items:center;gap:6px;margin:5px 0}
 .lognm{flex:1;font-size:13px}
 .loginp{width:60px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px;font-size:15px;text-align:center}
@@ -215,8 +219,25 @@ function spark(arr,hb){const pts=arr.map((v,i)=>[i,v]).filter(p=>p[1]!=null);if(
 function hrCurve(hrs){if(!hrs||hrs.length<2)return '';const W=300,H=56;let mn=Math.min(...hrs),mx=Math.max(...hrs);if(mn===mx){mn-=1;mx+=1}const n=hrs.length,X=i=>i/(n-1)*W,Y=v=>4+(1-(v-mn)/(mx-mn))*(H-8);let d='';hrs.forEach((v,i)=>d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ');return `<div class="muted small" style="margin-top:8px">Pulskurve ${Math.round(mn)}–${Math.round(mx)}</div><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><path d="${d}" fill="none" stroke="var(--warn)" stroke-width="2"/></svg>`}
 function elevSvg(a){if(!a||a.length<2)return '';const W=300,H=44;let mn=Math.min(...a),mx=Math.max(...a);if(mn===mx){mn-=1;mx+=1}const n=a.length,X=i=>i/(n-1)*W,Y=v=>4+(1-(v-mn)/(mx-mn))*(H-8);let d='M0 '+Y(a[0]).toFixed(1);a.forEach((v,i)=>{if(i)d+='L'+X(i).toFixed(1)+' '+Y(v).toFixed(1)});d+=`L${W} ${H} L0 ${H} Z`;return `<div class="muted small" style="margin-top:6px">Høyde ${Math.round(mn)}–${Math.round(mx)} m</div><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px"><path d="${d}" fill="var(--acc)" opacity=".18" stroke="var(--acc)" stroke-width="1.4"/></svg>`}
 function routeSvg(rt){if(!rt||rt.length<2)return '';const la0=(Math.min(...rt.map(p=>p[0]))+Math.max(...rt.map(p=>p[0])))/2,kx=Math.cos(la0*Math.PI/180);const xs=rt.map(p=>p[1]*kx),ys=rt.map(p=>p[0]);const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);const w=(mxx-mnx)||1e-6,h=(mxy-mny)||1e-6,pad=8,S=260,sc=Math.min(S/w,S/h);const W=w*sc+2*pad,H=h*sc+2*pad,X=x=>pad+(x-mnx)*sc,Y=y=>H-pad-(y-mny)*sc;let d='';rt.forEach((p,i)=>d+=(i?'L':'M')+X(p[1]*kx).toFixed(1)+' '+Y(p[0]).toFixed(1)+' ');return `<div class="muted small" style="margin-top:8px">Rute</div><svg class="chart" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" style="max-height:230px;width:100%"><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${X(rt[0][1]*kx).toFixed(1)}" cy="${Y(rt[0][0]).toFixed(1)}" r="4" fill="var(--good)"/><circle cx="${X(rt[rt.length-1][1]*kx).toFixed(1)}" cy="${Y(rt[rt.length-1][0]).toFixed(1)}" r="4" fill="var(--warn)"/></svg>`}
-function woDetail(x){const rows=[['Distanse',x.km?fmt(x.km,2)+' km':0],['Snittpuls',x.hr?x.hr+' /min':0],['Makspuls',x.hrmax?x.hrmax+' /min':0],['Snittfart',x.spd?fmt(x.spd,1)+' km/t':0],['Energi',x.kc?x.kc+' kcal':0],['Skritt',x.steps?fmt(x.steps,0):0],['Kadens',x.cad?x.cad+' spm':0],['Høyde ↑',x.up?x.up+' m':0],['Trapper',x.fl||0],['Tid',x.s&&x.e?x.s+'–'+x.e:0]].filter(r=>r[1]);const kv=rows.map(r=>`<div class="kv" style="display:flex;justify-content:space-between;font-size:12.5px;background:var(--card2);border-radius:9px;padding:6px 10px"><span class="muted">${r[0]}</span><b>${r[1]}</b></div>`).join('');return `<div style="padding:8px 0">${hrCurve(x.hrs)}${routeSvg(x.rt)}${elevSvg(x.alt)}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${kv}</div></div>`}
+function woDetail(x){const rows=[['Distanse',x.km?fmt(x.km,2)+' km':0],['Snittpuls',x.hr?x.hr+' /min':0],['Makspuls',x.hrmax?x.hrmax+' /min':0],['Snittfart',x.spd?fmt(x.spd,1)+' km/t':0],['Energi',x.kc?x.kc+' kcal':0],['Skritt',x.steps?fmt(x.steps,0):0],['Kadens',x.cad?x.cad+' spm':0],['Høyde ↑',x.up?x.up+' m':0],['Trapper',x.fl||0],['Tid',x.s&&x.e?x.s+'–'+x.e:0]].filter(r=>r[1]);const kv=rows.map(r=>`<div class="kv" style="display:flex;justify-content:space-between;font-size:12.5px;background:var(--card2);border-radius:9px;padding:6px 10px"><span class="muted">${r[0]}</span><b>${r[1]}</b></div>`).join('');return `<div style="padding:8px 0">${hrCurve(x.hrs)}${ruteKart(x.rt)}${elevSvg(x.alt)}<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${kv}</div></div>`}
 function tgl(id){const e=document.getElementById(id);if(e)e.style.display=e.style.display==='none'?'block':'none'}
+let _mapReg={},_mapN=0;
+function ruteKart(rt){if(!rt||rt.length<2)return '';const id='lmap'+(++_mapN);_mapReg[id]=rt;return `<div class="muted small" style="margin-top:8px">Kart</div><div id="${id}" class="lmap"></div>`;}
+function tglKart(id){tgl(id);setTimeout(initSynligeKart,60);}
+function initSynligeKart(){document.querySelectorAll('.lmap').forEach(el=>{
+ if(el._init||el.offsetParent===null)return;const rt=_mapReg[el.id];if(!rt||rt.length<2)return;el._init=1;
+ if(typeof L==='undefined'){el.innerHTML=routeSvg(rt);return;}
+ try{
+  const pts=rt.map(p=>[p[0],p[1]]);
+  const map=L.map(el,{zoomControl:true,attributionControl:true});
+  const poly=L.polyline(pts,{color:'#5b8cff',weight:4,opacity:.9}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+  map.fitBounds(poly.getBounds(),{padding:[18,18]});
+  L.circleMarker(pts[0],{radius:6,color:'#fff',weight:2,fillColor:'#37b24d',fillOpacity:1}).addTo(map);
+  L.circleMarker(pts[pts.length-1],{radius:6,color:'#fff',weight:2,fillColor:'#f03e3e',fillOpacity:1}).addTo(map);
+  setTimeout(()=>map.invalidateSize(),60);
+ }catch(e){el.innerHTML=routeSvg(rt);}
+});}
 
 /* ---------- readiness ---------- */
 function readiness(){
@@ -269,7 +290,7 @@ function doneFor(day){const w=WK.filter(x=>x.d===day);const sty=(STY[day]||[]).l
 function todayTraining(day){
  const dn=doneFor(day);let h='<div class="card">';
  if(dn.workouts.length||dn.sty){
-  dn.workouts.forEach((x,i)=>{h+=`<div class="li tap" onclick="tgl('td${i}')"><div><div class="nm">✓ ${x.t} <span class="muted">▾</span></div><div class="dt">${x.km?fmt(x.km,1)+' km · ':''}${x.hr?'snittpuls '+x.hr:''}</div></div><div class="rt"><div class="b">${fmt(x.m,0)} min</div><div class="dt">${x.kc?x.kc+' kcal':''}</div></div></div><div id="td${i}" style="display:none">${woDetail(x)}</div>`});
+  dn.workouts.forEach((x,i)=>{h+=`<div class="li tap" onclick="tglKart('td${i}')"><div><div class="nm">✓ ${x.t} <span class="muted">▾</span></div><div class="dt">${x.km?fmt(x.km,1)+' km · ':''}${x.hr?'snittpuls '+x.hr:''}</div></div><div class="rt"><div class="b">${fmt(x.m,0)} min</div><div class="dt">${x.kc?x.kc+' kcal':''}</div></div></div><div id="td${i}" style="display:none">${woDetail(x)}</div>`});
   if(dn.sty){h+=`<div class="li"><div class="nm">✓ Styrke loggført (${(STY[day]||[]).length} øvelser)</div><span class="pill ok">gjort</span></div>`;(STY[day]||[]).forEach(e=>{h+=`<div class="ex"><b>${e.o}</b> <span class="muted">${e.s}×${e.r}${e.v?' · '+e.v+' kg':' · RIR '+e.rir}</span></div>`})}
  }else{if(FASE){const n=FASE.rotasjon[nextStrengthIdx()];h+=`<div class="li"><div><div class="nm">Neste økt: ${n.tittel}</div><div class="dt">styrke · eller restitusjon Zone 2</div></div><span class="pill styrke">forslag</span></div>`}h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`}
  h+='</div>';return h;
@@ -329,7 +350,7 @@ function treningLogg(){
   const erSty=/Styrke/i.test(w.t);const pace=(w.km>0&&w.m>0)?(w.m/w.km):null;
   const sty=erSty?(STY[w.d]||[]):[];
   const rhs=w.km>0?fmt(w.km,2)+' km':(sty.length?sty.length+' øvelser':(w.kc?fmt(w.kc,0)+' kcal':''));
-  h+=`<div class="card tight tap" onclick="tgl('ok${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${ikonFor(w.t)} ${w.t}</div><div class="dt">${labelDay(w.d)}${w.s?' · '+w.s:''}${w.hr?' · ♥ '+fmt(w.hr,0):''}</div></div><div style="text-align:right"><div class="nm">${w.m?fmt(w.m,0)+' min':''}</div><div class="dt">${rhs}</div></div></div>`;
+  h+=`<div class="card tight tap" onclick="tglKart('ok${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${ikonFor(w.t)} ${w.t}</div><div class="dt">${labelDay(w.d)}${w.s?' · '+w.s:''}${w.hr?' · ♥ '+fmt(w.hr,0):''}</div></div><div style="text-align:right"><div class="nm">${w.m?fmt(w.m,0)+' min':''}</div><div class="dt">${rhs}</div></div></div>`;
   h+=`<div id="ok${i}" style="display:none;margin-top:8px">`;
   const M=[
    ['Varighet', w.m?fmt(w.m,0)+' min':null, 'Total tid på økta.'],
@@ -358,7 +379,7 @@ function treningLogg(){
    ['Klokkeslett', (w.s&&w.e)?w.s+'–'+w.e:null, 'Når økta startet og sluttet.'],
   ].filter(x=>x[1]!=null);
   if(M.length)h+='<div style="background:var(--card2);border-radius:11px;padding:2px 12px;margin-top:6px">'+M.map((x,j)=>`<div class="mrow"><span>${x[0]} <span class="mi" onclick="tgl('mi${i}_${j}')">i</span></span><b>${x[1]}</b></div><div id="mi${i}_${j}" class="muted small" style="display:none;padding:0 0 8px">${x[2]}</div>`).join('')+'</div>';
-  if(w.rt&&w.rt.length>1)h+=routeSvg(w.rt)+elevSvg(w.alt);
+  if(w.rt&&w.rt.length>1)h+=ruteKart(w.rt)+elevSvg(w.alt);
   if(w.hrs&&w.hrs.length>1)h+=`<div class="muted small" style="margin-top:8px">Pulskurve (${Math.min(...w.hrs)}–${Math.max(...w.hrs)} bpm)</div>${hrSpark(w.hrs)}`;
   if(sty.length){h+='<div class="muted small" style="margin-top:8px">Øvelser</div>';sty.forEach(e=>h+=`<div class="ex" style="display:flex;justify-content:space-between;gap:8px"><span>${e.o}${e.n?' <span class="muted" style="font-size:11px">'+e.n+'</span>':''}</span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${e.v?e.v+' kg · ':''}${e.s}×${e.r}${e.rir?' · RIR '+e.rir:''}</span></div>`);}
   h+='</div></div>';
