@@ -340,6 +340,7 @@ function treningLogg(){
   if(w.spdmax)g.push(['Maksfart',fmt(w.spdmax,1)+' km/t']);
   if(w.s&&w.e)g.push(['Klokkeslett',w.s+'–'+w.e]);
   if(g.length)h+=`<div class="mgrid">${g.map(x=>`<div class="mcell"><div class="mk">${x[0]}</div><div class="mv">${x[1]}</div></div>`).join('')}</div>`;
+  if(w.rt&&w.rt.length>1)h+=routeSvg(w.rt)+elevSvg(w.alt);
   if(w.hrs&&w.hrs.length>1)h+=`<div class="muted small" style="margin-top:8px">Pulskurve (${Math.min(...w.hrs)}–${Math.max(...w.hrs)} bpm)</div>${hrSpark(w.hrs)}`;
   if(sty.length){h+='<div class="muted small" style="margin-top:8px">Øvelser</div>';sty.forEach(e=>h+=`<div class="ex" style="display:flex;justify-content:space-between;gap:8px"><span>${e.o}${e.n?' <span class="muted" style="font-size:11px">'+e.n+'</span>':''}</span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${e.v?e.v+' kg · ':''}${e.s}×${e.r}${e.rir?' · RIR '+e.rir:''}</span></div>`);}
   h+='</div></div>';
