@@ -351,7 +351,7 @@ function treningLogg(){
   const sty=erSty?(STY[w.d]||[]):[];
   const rhs=w.km>0?fmt(w.km,2)+' km':(sty.length?sty.length+' øvelser':(w.kc?fmt(w.kc,0)+' kcal':''));
   h+=`<div class="card tight tap" onclick="tglKart('ok${i}')"><div class="li" style="border:0;padding:2px 0"><div><div class="nm">${ikonFor(w.t)} ${w.t}</div><div class="dt">${labelDay(w.d)}${w.s?' · '+w.s:''}${w.hr?' · ♥ '+fmt(w.hr,0):''}</div></div><div style="text-align:right"><div class="nm">${w.m?fmt(w.m,0)+' min':''}</div><div class="dt">${rhs}</div></div></div>`;
-  h+=`<div id="ok${i}" style="display:none;margin-top:8px">`;
+  h+=`<div id="ok${i}" style="display:none;margin-top:8px" onclick="event.stopPropagation()">`;
   const M=[
    ['Varighet', w.m?fmt(w.m,0)+' min':null, 'Total tid på økta.'],
    ['Distanse', w.km>0?fmt(w.km,2)+' km':null, 'Tilbakelagt strekning.'],
