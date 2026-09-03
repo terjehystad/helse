@@ -241,7 +241,7 @@ function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kc
 function pageIdag(){
  const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
  let h='';
- h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button onclick="loadData()" style="flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap">↻ Oppdater</button></div>`;
+ h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button onclick="oppdaterOgSynk()" style="flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap">↻ Oppdater</button></div>`;
  h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div>${rd.note?'<div class="muted small" style="margin-top:5px">'+rd.note+'</div>':''}</div></div>`;
  // vital summary
  h+='<h2 class="sh">Nøkkeltall</h2><div class="grid">';
@@ -490,6 +490,20 @@ function boot(data){
  show('idag');
 }
 async function gunzipB64(b64){const bin=atob(b64),by=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);const st=new Blob([by]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(st).text());}
+let _synkPoll=null;
+function toast(msg){let t=document.getElementById('htoast');if(!t){t=document.createElement('div');t.id='htoast';t.style.cssText='position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:88%;text-align:center;transition:opacity .4s';document.body.appendChild(t);}t.textContent=msg;t.style.opacity='1';clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},4500);}
+async function oppdaterOgSynk(){
+ let f=(DATA.meta&&DATA.meta.updated)||'';
+ toast('🔄 Henter ferske tall …');
+ try{const {data}=await sb.rpc('helse_snapshot');if(data){const nd=await gunzipB64(data);boot(nd);f=(nd.meta&&nd.meta.updated)||f;}}catch(e){}
+ try{await sb.rpc('helse_be_om_synk');}catch(e){toast('✓ Viser nyeste (kunne ikke bestille ny synk)');return;}
+ toast('🔄 Ber Mac-en om nyeste … (~1 min)');
+ if(_synkPoll)clearInterval(_synkPoll);let n=0;
+ _synkPoll=setInterval(async()=>{n++;
+  try{const {data}=await sb.rpc('helse_snapshot');if(data){const nd=await gunzipB64(data);if(nd.meta&&nd.meta.updated!==f){clearInterval(_synkPoll);_synkPoll=null;boot(nd);toast('✓ Oppdatert — '+nd.meta.updated);return;}}}catch(e){}
+  if(n>=12){clearInterval(_synkPoll);_synkPoll=null;toast('Viser det som var klart. Trykk igjen om et halvt minutt om noe mangler.');}
+ },12000);
+}
 function shellMsg(html){const s=document.getElementById('shell');s.innerHTML=html;s.style.display='flex';document.getElementById('nav').style.display='none';}
 async function loadData(){
  shellMsg('<div class="lbox"><div class="spin"></div><div class="muted">Henter helsedata…</div></div>');
