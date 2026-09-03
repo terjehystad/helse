@@ -241,7 +241,7 @@ function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kc
 function pageIdag(){
  const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
  let h='';
- h+=`<div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div>`;
+ h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button onclick="loadData()" style="flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap">↻ Oppdater</button></div>`;
  h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div>${rd.note?'<div class="muted small" style="margin-top:5px">'+rd.note+'</div>':''}</div></div>`;
  // vital summary
  h+='<h2 class="sh">Nøkkeltall</h2><div class="grid">';
