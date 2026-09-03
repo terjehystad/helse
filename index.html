@@ -279,7 +279,7 @@ function pageTrening(){
  h+=(trTab==='trening')?treningLogg():planVisning();
  document.getElementById('p-trening').innerHTML=h;window.scrollTo(0,0);
 }
-function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE||d>=FASE.start)s.add(d)});WK.forEach(w=>{if(/Styrke/i.test(w.t)&&(!FASE||w.d>=FASE.start))s.add(w.d)});return [...s].sort();}
+function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE||d>=FASE.start)s.add(d)});WK.forEach(w=>{if(/Styrke/i.test(w.t)&&(w.m||0)>=20&&(!FASE||w.d>=FASE.start))s.add(w.d)});return [...s].sort();}
 function faseUke(){if(!FASE)return 1;const dgr=Math.floor((toDate(maxD)-toDate(FASE.start))/86400000);return Math.min(FASE.uker,Math.max(1,Math.floor(dgr/7)+1));}
 function nextStrengthIdx(){if(!FASE)return 0;return strengthDays().length%FASE.rotasjon.length;}
 async function saveStyrke(tittel,n){
