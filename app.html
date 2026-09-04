@@ -261,12 +261,33 @@ function ring(score,col){const r=44,c=2*Math.PI*r,off=c*(1-(score||0)/100);retur
 /* ---------- energy balance ---------- */
 function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kcm;const ut=(r.ae!=null?r.ae:0)+2300;/* estimert basal ~2300 */return{inn,ut:r.ae!=null?Math.round(r.ae+2300):null,bal:(inn!=null&&r.ae!=null)?Math.round(inn-(r.ae+2300)):null}}
 
+/* ---------- Garmin recovery-panel (datasanker, kondisjons-fokus) ---------- */
+function garminPanel(r){
+ if(r==null||(r.tr==null&&r.bb==null&&r.str==null))return '';
+ const TRL={VERY_LOW:'svært lav',LOW:'lav',MODERATE:'moderat',HIGH:'høy',VERY_HIGH:'svært høy'};
+ const TRT={FIND_TIME_TO_RELAX:'Finn tid til å slappe av',SLEEP_MORE:'Sov mer',HIGH_STRESS:'Høyt stress – ta det rolig',READY_TO_TRAIN:'Klar for trening',GOOD_TIME_TO_TRAIN:'God tid å trene',PRIME_TIME_TO_TRAIN:'Toppform for trening',PUSH_YOURSELF:'Du kan pushe',MAINTAIN_MOMENTUM:'Hold momentum',MODERATE:'Moderat dag',LOW_RT:'Kort restitusjon',NONE:''};
+ const bc=v=>v==null?'var(--mut)':v>=70?'var(--good)':v>=40?'var(--energy)':'var(--warn)';
+ const tc=v=>v==null?'var(--mut)':v>=70?'var(--good)':v>=50?'var(--energy)':'var(--warn)';
+ let boxes='';
+ boxes+=`<div class="stat"><div class="k">Treningsberedskap</div><div class="v" style="color:${tc(r.tr)}">${r.tr!=null?r.tr:'–'}<small>${r.trl?' '+(TRL[r.trl]||r.trl.toLowerCase()):''}</small></div></div>`;
+ boxes+=`<div class="stat"><div class="k">Body Battery</div><div class="v" style="color:${bc(r.bb)}">${r.bb!=null?r.bb:'–'}<small>/100</small></div></div>`;
+ boxes+=`<div class="stat"><div class="k">Stress snitt</div><div class="v">${r.str!=null?Math.round(r.str):'–'}</div></div>`;
+ const rec=r.trtxt?(TRT[r.trtxt]!=null?TRT[r.trtxt]:r.trtxt.replace(/_/g,' ').toLowerCase()):'';
+ return `<h2 class="sh">Garmin recovery <span class="mi" onclick="tgl('gminfo')">i</span></h2>`
+  +`<div id="gminfo" class="muted small" style="display:none;margin:0 6px 6px">Garmin er en <b>datasanker</b> med kondisjons-fokus. Tallene måler restitusjon godt, men Garmin kjenner ikke styrkeplanen din — <b>planen bestemmer</b> (se «Trening i dag»). Symptomer slår app-tall.</div>`
+  +`<div class="card"><div class="grid g3">${boxes}</div>`
+  +(rec?`<div class="rb" style="margin-top:10px"><b>Garmins anbefaling:</b> ${rec}. <span class="muted">Gjelder kondisjon — ikke en overstyring av styrkedagen.</span></div>`:'')
+  +`</div>`;
+}
+
 /* ================= PAGE: I DAG ================= */
 function pageIdag(){
  const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
  let h='';
  h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button onclick="oppdaterOgSynk()" style="flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap">↻ Oppdater</button></div>`;
  h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div>${rd.note?'<div class="muted small" style="margin-top:5px">'+rd.note+'</div>':''}</div></div>`;
+ // Garmin recovery (datasanker)
+ h+=garminPanel(r);
  // vital summary
  h+='<h2 class="sh">Nøkkeltall</h2><div class="grid">';
  [['w','Vekt'],['rhr','Hvilepuls'],['hrv','HRV natt'],['sl','Søvn'],['st','Skritt'],['ae','Aktiv energi']].forEach(([k,t])=>{
