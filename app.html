@@ -259,7 +259,7 @@ function readiness(){
 function ring(score,col){const r=44,c=2*Math.PI*r,off=c*(1-(score||0)/100);return `<svg viewBox="0 0 104 104" style="width:104px;height:104px"><circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--card2)" stroke-width="9"/><circle cx="52" cy="52" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 52 52)"/></svg>`}
 
 /* ---------- energy balance ---------- */
-function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kcm;const ut=(r.ae!=null?r.ae:0)+2300;/* estimert basal ~2300 */return{inn,ut:r.ae!=null?Math.round(r.ae+2300):null,bal:(inn!=null&&r.ae!=null)?Math.round(inn-(r.ae+2300)):null}}
+function energyBalance(day){const r=byDate[day];if(!r)return null;const inn=r.kcm;const ut=(r.fb!=null)?r.fb:(r.ae!=null?Math.round(r.ae+2300):null);/* Garmin målt total, ellers aktiv+basal~2300 */return{inn,ut,bal:(inn!=null&&ut!=null)?Math.round(inn-ut):null}}
 
 /* ---------- Garmin recovery-panel (datasanker, kondisjons-fokus) ---------- */
 function garminPanel(r){
@@ -301,7 +301,7 @@ function pageIdag(){
  h+='<h2 class="sh">Trening i dag</h2>'+todayTraining(day);
  // energy balance
  const eb=energyBalance(day);
- if(eb&&eb.bal!=null){h+=`<h2 class="sh">Energibalanse i dag</h2><div class="card"><div style="display:flex;justify-content:space-between"><div><div class="muted small">Inntak</div><div style="font-weight:800;font-size:18px">${fmt(eb.inn,0)}</div></div><div><div class="muted small">Forbruk</div><div style="font-weight:800;font-size:18px">${fmt(eb.ut,0)}</div></div><div><div class="muted small">Balanse</div><div style="font-weight:800;font-size:18px;color:${eb.bal<0?'var(--good)':'var(--energy)'}">${eb.bal>0?'+':''}${fmt(eb.bal,0)}</div></div></div><div class="muted small" style="margin-top:8px">Kun logget mat teller. Forbruk ≈ aktiv + basal (~2300).</div></div>`}
+ if(eb&&eb.bal!=null){h+=`<h2 class="sh">Energibalanse i dag</h2><div class="card"><div style="display:flex;justify-content:space-between"><div><div class="muted small">Inntak</div><div style="font-weight:800;font-size:18px">${fmt(eb.inn,0)}</div></div><div><div class="muted small">Forbruk</div><div style="font-weight:800;font-size:18px">${fmt(eb.ut,0)}</div></div><div><div class="muted small">Balanse</div><div style="font-weight:800;font-size:18px;color:${eb.bal<0?'var(--good)':'var(--energy)'}">${eb.bal>0?'+':''}${fmt(eb.bal,0)}</div></div></div><div class="muted small" style="margin-top:8px">Kun logget mat teller. Forbruk = Garmin målt total (BMR+aktiv), ellers aktiv + basal ~2300.</div></div>`}
  // recommendation
  if(REC){h+=`<h2 class="sh">Anbefaling i morgen</h2><div class="card rec"><div class="rk">🏋️ ${REC.tren_t}</div><div class="rb">${REC.tren_b}</div><div class="rk" style="margin-top:10px">🍽️ ${REC.mat_t}</div><div class="rb">${REC.mat_b}</div><div class="muted small" style="margin-top:9px;border-top:1px solid var(--line);padding-top:7px">Forslag ut fra dine mål og recovery — ikke medisinsk råd. Forutsetter legeklarering.</div></div>`}
  document.getElementById('p-idag').innerHTML=h;
