@@ -419,16 +419,16 @@ function longSeries(k){const grp={};R.forEach(r=>{if(r[k]==null)return;(grp[r.d.
 function dataSeries(){
  const k=dMetric,g=dGran,a=dAnchor,av=arr=>MK[k].agg==='last'?arr[arr.length-1]:arr.reduce((x,y)=>x+y,0)/arr.length;
  let series=[],label='';
- if(g==='dag'){const days=[...Array(7)].map((_,i)=>addDays(a,i-6));series=days.map(d=>[d.slice(8), (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label=toDate(a).getDate()+'. '+MONF[toDate(a).getMonth()].toLowerCase()+' '+a.slice(0,4);}
- else if(g==='uke'){const m=monday(a);const DD=['ma','ti','on','to','fr','lø','sø'];const days=[...Array(7)].map((_,i)=>addDays(m,i));series=days.map((d,i)=>[DD[i], (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label='Uke '+isoWeek(m)+' · '+m.slice(0,4);}
- else if(g==='mnd'){const ym=a.slice(0,7);const rs=R.filter(r=>r.d.slice(0,7)===ym&&r[k]!=null);series=rs.map(r=>[r.d.slice(8),r[k]]);label=MONF[+ym.slice(5,7)-1]+' '+ym.slice(0,4);}
+ if(g==='dag'){const days=[...Array(7)].map((_,i)=>addDays(a,i-6));series=days.map(d=>[d.slice(8)+'.'+d.slice(5,7), (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label=toDate(a).getDate()+'. '+MONF[toDate(a).getMonth()].toLowerCase()+' '+a.slice(0,4);}
+ else if(g==='uke'){const days=[...Array(7)].map((_,i)=>addDays(a,i-6));series=days.map(d=>[d.slice(8)+'.'+d.slice(5,7), (byDate[d]&&byDate[d][k]!=null)?byDate[d][k]:null]);label='Siste 7 dager · '+days[0].slice(8)+'.'+days[0].slice(5,7)+'–'+days[6].slice(8)+'.'+days[6].slice(5,7);}
+ else if(g==='mnd'){const ym=a.slice(0,7);const rs=R.filter(r=>r.d.slice(0,7)===ym&&r[k]!=null);series=rs.map(r=>[r.d.slice(8)+'.'+r.d.slice(5,7),r[k]]);label=MONF[+ym.slice(5,7)-1]+' '+ym.slice(0,4);}
  else if(g==='aar'){const y=a.slice(0,4);const grp={};R.forEach(r=>{if(r.d.slice(0,4)!==y||r[k]==null)return;(grp[r.d.slice(0,7)]=grp[r.d.slice(0,7)]||[]).push(r[k])});series=Object.keys(grp).sort().map(key=>[MON[+key.slice(5,7)-1],av(grp[key])]);label=y;}
  else {const grp={};R.forEach(r=>{if(r[k]==null)return;(grp[r.d.slice(0,7)]=grp[r.d.slice(0,7)]||[]).push(r[k])});series=Object.keys(grp).sort().map(key=>[MON[+key.slice(5,7)-1]+' '+key.slice(0,4),av(grp[key])]);label='Hele perioden';}
  return {series,label};
 }
 function navP(dir){
  if(dGran==='dag')dAnchor=clampD(addDays(dAnchor,dir));
- else if(dGran==='uke')dAnchor=clampD(addDays(monday(dAnchor),7*dir));
+ else if(dGran==='uke')dAnchor=clampD(addDays(dAnchor,7*dir));
  else if(dGran==='mnd'){const t=toDate(dAnchor.slice(0,7)+'-01');t.setMonth(t.getMonth()+dir);dAnchor=clampD(fromDate(t))}
  else if(dGran==='aar')dAnchor=clampD(clampYear(+dAnchor.slice(0,4)+dir));
  drawData();
