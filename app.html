@@ -308,12 +308,16 @@ function pageIdag(){
 }
 function plannedFor(day){const wd=(toDate(day).getDay()+6)%7;return PLANMAL[String(wd)]||null}
 function doneFor(day){const w=WK.filter(x=>x.d===day);const sty=(STY[day]||[]).length>0;let type=null;if(sty)type='styrke';else if(w.length){const t=w.map(x=>x.t).join(' ');type=/Styrke/.test(t)?'styrke':'kondis'}return{workouts:w,sty,type}}
+function planDone(p){const d=doneFor(p.dato);if(p.type==='styrke')return d.sty||d.workouts.some(w=>/Styrke/i.test(w.t));if(p.type==='kondis')return d.workouts.some(w=>!/Styrke/i.test(w.t));return false;}
 function todayTraining(day){
- const dn=doneFor(day);let h='<div class="card">';
+ const dn=doneFor(day),plan=PLAN.find(p=>p.dato===day&&p.tilpasset);let h='<div class="card">';
  if(dn.workouts.length||dn.sty){
   dn.workouts.forEach((x,i)=>{h+=`<div class="li tap" onclick="tglKart('td${i}')"><div><div class="nm">✓ ${x.t} <span class="muted">▾</span></div><div class="dt">${x.km?fmt(x.km,1)+' km · ':''}${x.hr?'snittpuls '+x.hr:''}</div></div><div class="rt"><div class="b">${fmt(x.m,0)} min</div><div class="dt">${x.kc?x.kc+' kcal':''}</div></div></div><div id="td${i}" style="display:none">${woDetail(x)}</div>`});
   if(dn.sty){h+=`<div class="li"><div class="nm">✓ Styrke loggført (${(STY[day]||[]).length} øvelser)</div><span class="pill ok">gjort</span></div>`;(STY[day]||[]).forEach(e=>{h+=`<div class="ex"><b>${e.o}</b> <span class="muted">${e.s}×${e.r}${e.v?' · '+e.v+' kg':' · RIR '+e.rir}</span></div>`})}
-}else{const plan=PLAN.find(p=>p.dato===day&&p.tilpasset);if(plan){h+=`<div class="li"><div><div class="nm">Plan: ${plan.tittel}</div><div class="dt">${plan.fokus}</div></div><span class="pill ${plan.type==='styrke'?'styrke':'ok'}">plan</span></div>`}else if(FASE){const n=FASE.rotasjon[nextStrengthIdx()];h+=`<div class="li"><div><div class="nm">Neste økt: ${n.tittel}</div><div class="dt">styrke · eller restitusjon Zone 2</div></div><span class="pill styrke">forslag</span></div>`}h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`}
+ }
+ if(plan&&!planDone(plan)){h+=`<div class="li"><div><div class="nm">Plan: ${plan.tittel}</div><div class="dt">${plan.fokus.split(' · ')[0]}</div></div><span class="pill ${plan.type}">gjenstår</span></div>`}
+ else if(!plan&&!dn.workouts.length&&!dn.sty&&FASE){const n=FASE.rotasjon[nextStrengthIdx()];h+=`<div class="li"><div><div class="nm">Neste økt: ${n.tittel}</div><div class="dt">styrke · eller restitusjon Zone 2</div></div><span class="pill styrke">forslag</span></div>`}
+ if(!dn.workouts.length&&!dn.sty)h+=`<div class="muted small center" style="padding:12px">Ingen økt registrert ennå i dag.</div>`;
  h+='</div>';return h;
 }
 
@@ -328,25 +332,27 @@ function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE|
 function faseUke(){if(!FASE)return 1;const dgr=Math.floor((toDate(maxD)-toDate(FASE.start))/86400000);return Math.min(FASE.uker,Math.max(1,Math.floor(dgr/7)+1));}
 function nextStrengthIdx(){if(!FASE)return 0;return strengthDays().length%FASE.rotasjon.length;}
 function sisteFor(o){const ds=Object.keys(STY).sort().reverse();for(const d of ds){const e=(STY[d]||[]).find(x=>x.o===o);if(e)return {v:+e.v||0,s:e.s,r:e.r,d};}return null;}
-async function saveStyrke(tittel,n){
- const st=document.getElementById('lagrestatus');
- const ov=FASE.rotasjon[nextStrengthIdx()].ov;const rader=[];
- for(let i=0;i<n;i++){const kg=(document.getElementById('lkg'+i)||{}).value;const rp=(document.getElementById('lrp'+i)||{}).value;
-  if(kg&&(''+kg).trim()!==''){rader.push({ovelse:ov[i],vekt_kg:(''+kg).trim(),reps:(rp&&(''+rp).trim())||'12',sett:3,rir:FASE.rir,notat:tittel});}}
+function supersettBoks(ss){if(!ss||!ss.length)return '';return `<div style="background:var(--card2);border-radius:10px;padding:9px 11px;margin-bottom:11px;font-size:12px"><b style="color:var(--acc)">🔁 Supersett-plan</b> — gjør parene rett etter hverandre, hvil <b style="color:var(--ink)">60–90 s</b> etter paret:${ss.map((g,gi)=>`<div class="muted" style="margin-top:3px"><b style="color:var(--ink)">${gi+1}.</b> ${g.join('  +  ')}</div>`).join('')}</div>`;}
+function styrkeFelter(ov,prefix){return ov.map((o,i)=>{const oi=(DATA.ovelse_info||{})[o]||{},sist=sisteFor(o),inf=prefix+'inf'+i;return `<div class="logrow"><div style="flex:1;min-width:0"><span class="lognm">${o}${oi.tip?` <span onclick="tgl('${inf}')" style="display:inline-block;width:16px;height:16px;line-height:14px;text-align:center;border:1px solid var(--line);border-radius:50%;color:var(--acc);font-size:11px;font-style:italic;font-weight:700;cursor:pointer;vertical-align:middle">i</span>`:''}</span>${oi.stasjon?`<div class="muted" style="font-size:11px;margin-top:1px">📍 ${oi.stasjon}</div>`:''}${sist?`<div class="muted" style="font-size:11px;margin-top:1px">↩ Sist: <b style="color:var(--ink)">${sist.v>0?sist.v+' kg':'kroppsvekt'}</b> · ${sist.s}×${sist.r} · ${labelDay(sist.d)}</div>`:`<div class="muted" style="font-size:11px;margin-top:1px">Ingen tidligere registrert vekt</div>`}</div><input id="${prefix}kg${i}" class="loginp" type="number" inputmode="decimal" placeholder="${sist&&sist.v>0?sist.v:'kg'}"><input id="${prefix}rp${i}" class="loginp" type="number" inputmode="numeric" placeholder="${sist?sist.r:'reps'}"></div>${oi.tip?`<div id="${inf}" class="muted small" style="display:none;margin:-2px 0 7px;padding-left:2px">⏱️ Pause <b style="color:var(--ink)">${oi.pause}</b> · ${oi.tip}</div>`:''}`;}).join('');}
+async function saveStyrkeRader(tittel,dato,ov,prefix,statusId){
+ const st=document.getElementById(statusId),rader=[];
+ for(let i=0;i<ov.length;i++){const kg=(document.getElementById(prefix+'kg'+i)||{}).value,rp=(document.getElementById(prefix+'rp'+i)||{}).value;if(kg&&(''+kg).trim()!=='')rader.push({ovelse:ov[i],vekt_kg:(''+kg).trim(),reps:(rp&&(''+rp).trim())||'12',sett:3,rir:FASE.rir,notat:tittel});}
  if(!rader.length){st.innerHTML='<span style="color:var(--energy)">Skriv inn minst én vekt først.</span>';return;}
  if(typeof sb==='undefined'||!sb){st.innerHTML='<span style="color:var(--warn)">Ikke innlogget.</span>';return;}
- st.textContent='Lagrer…';
- const dato=fromDate(new Date());
- const {data,error}=await sb.rpc('helse_lagre_styrke',{p_dato:dato,p_rader:rader});
+ st.textContent='Lagrer…';const {data,error}=await sb.rpc('helse_lagre_styrke',{p_dato:dato,p_rader:rader});
  if(error){st.innerHTML='<span style="color:var(--warn)">Feil: '+error.message+'</span>';return;}
  st.innerHTML='<span style="color:var(--good)">✓ Lagret '+rader.length+' øvelser ('+dato+'). Vises i «Trening»-loggen etter neste synk.</span>';
 }
+async function saveStyrke(tittel,n){
+ const ov=FASE.rotasjon[nextStrengthIdx()].ov;await saveStyrkeRader(tittel,fromDate(new Date()),ov,'l','lagrestatus');
+}
+async function savePlanStyrke(i){const p=PLAN[i];if(!p||!p.ov)return;await saveStyrkeRader(p.tittel,p.dato,p.ov,'lp'+i+'_','lp'+i+'_status');}
 function planVisning(){
  if(!FASE)return '<div class="muted small">Ingen plan.</div>';
  const uke=faseUke(),idx=nextStrengthIdx(),neste=FASE.rotasjon[idx],gjort=strengthDays().length;
- const tilpassetPlan=PLAN.some(p=>p.tilpasset);
- let h=`<div class="card" style="background:var(--grad);color:#fff;border:0"><div style="font-weight:850;font-size:18px">${FASE.navn}</div><div style="opacity:.92;font-size:13px;margin-top:2px">Uke ${uke} av ${FASE.uker} · ${gjort} styrkeøkter gjennomført</div></div>`;
- if(tilpassetPlan){h+='<h2 class="sh">Ukeplan · 20.–27. september</h2><div class="card">'+PLAN.map(p=>`<div class="ex" style="padding:10px 0"><b>${p.ukedag} ${p.dato.slice(8)}</b><div style="margin-top:2px">${p.tittel}</div><div class="muted small" style="margin-top:2px">${p.fokus}</div></div>`).join('')+'</div>'}
+ const tilpassetPlan=PLAN.some(p=>p.tilpasset),aktive=PLAN.filter(p=>p.type!=='hvile'),planFullfort=aktive.filter(planDone).length;
+ let h=`<div class="card" style="background:var(--grad);color:#fff;border:0"><div style="font-weight:850;font-size:18px">${tilpassetPlan?'Reiseuke':FASE.navn}</div><div style="opacity:.92;font-size:13px;margin-top:2px">${tilpassetPlan?'20.–27. september · '+planFullfort+' av '+aktive.length+' planlagte økter fullført':'Uke '+uke+' av '+FASE.uker+' · '+gjort+' styrkeøkter gjennomført'}</div></div>`;
+ if(tilpassetPlan){h+='<h2 class="sh">Denne uken</h2><div class="card">'+PLAN.map((p,i)=>{const ferdig=planDone(p),tag=ferdig?'ok':p.type,tekst=ferdig?'fullført':p.type==='styrke'?'styrke':p.type==='kondis'?'kondis':'hvile',detaljer=p.fokus.split(' · ').map(x=>`<div class="ex">${x}</div>`).join(''),styrke=p.type==='styrke'&&p.ov?`<div class="muted small" style="padding:8px 0">🚣 5 min roing (RPE 2–3) før styrke · 🌀 20 min ellipse etterpå, 110–125 bpm (maks 130).</div>${supersettBoks(p.ss)}<div class="muted small" style="margin:8px 0">Skriv inn dagens kg og reps. Tidligere registrerte vekter står under øvelsen.</div>${styrkeFelter(p.ov,'lp'+i+'_')}<button class="lagrebtn" onclick="savePlanStyrke(${i})">Lagre ${p.ukedag.toLowerCase()}ens økt ✓</button><div id="lp${i}_status" class="small" style="margin-top:8px"></div>`:'';return `<div class="li tap" onclick="tgl('uke${i}')"><div><div class="nm">${p.ukedag} ${labelDay(p.dato)} · ${p.tittel}</div><div class="dt">${ferdig?'Planlagt økt fullført':p.fokus.split(' · ')[0]} <span class="muted">▾</span></div></div><span class="pill ${tag}">${tekst}</span></div><div id="uke${i}" style="${p.dato===maxD?'display:block':'display:none'};background:var(--card2);border-radius:11px;padding:4px 12px 12px;margin:0 0 8px" onclick="event.stopPropagation()">${detaljer}${styrke}</div>`;}).join('')+'</div>'}
  h+='<h2 class="sh">Mål i fasen</h2><div class="card"><div class="muted small" style="margin-bottom:8px">Bygg sener, senefester og teknikk før vi legger på vekt. Tre brytere fra din egen langtidsanalyse:</div>'+FASE.brytere.map(b=>`<div class="ex">🎯 ${b}</div>`).join('')+`<div class="muted small" style="margin-top:8px">Alle øvelser: <b style="color:var(--ink)">${FASE.reps} reps · RIR ${FASE.rir} · ${FASE.tempo}</b>. Aldri til failure.</div></div>`;
  if(!tilpassetPlan){
  h+='<h2 class="sh">Neste styrkeøkt</h2>';
