@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Helse">
 <meta name="theme-color" content="#0a0d13">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Terje · Helse</title>
 <script src="apexcharts.min.js"></script>
 <script src="supabase.min.js"></script>
@@ -30,6 +33,8 @@ body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMac
  font-weight:800;font-size:15px;color:#fff;letter-spacing:-.5px;box-shadow:0 4px 16px rgba(92,140,255,.35)}
 .hdr h1{font-size:18px;margin:0;font-weight:750;letter-spacing:-.3px}
 .hdr .sub{color:var(--mut);font-size:11.5px;margin-top:1px}
+.hardrefresh{flex:none;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:750;white-space:nowrap}
+.hardrefresh:active{transform:scale(.96)}
 .pagetitle{font-size:26px;font-weight:820;letter-spacing:-.6px;margin:6px 18px 2px}
 .pagesub{color:var(--mut);font-size:12.5px;margin:0 18px 10px}
 /* pages */
@@ -141,6 +146,7 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
  <div class="hdr"><div class="row">
    <div class="mono">TH</div>
    <div style="flex:1"><h1 id="hi">Hei, Terje</h1><div class="sub" id="hsub"></div></div>
+   <button class="hardrefresh" type="button" onclick="tvungenOppdatering()" aria-label="Tvungen oppdatering av appen">↻ Ny app</button>
  </div></div>
 
  <div class="page on" id="p-idag"></div>
@@ -568,6 +574,12 @@ function boot(data){
 async function gunzipB64(b64){const bin=atob(b64),by=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);const st=new Blob([by]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(st).text());}
 let _synkPoll=null;
 function toast(msg){let t=document.getElementById('htoast');if(!t){t=document.createElement('div');t.id='htoast';t.style.cssText='position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:88%;text-align:center;transition:opacity .4s';document.body.appendChild(t);}t.textContent=msg;t.style.opacity='1';clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},4500);}
+async function tvungenOppdatering(){
+ toast('↻ Hentar ny appversjon …');
+ try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
+ try{if('serviceWorker' in navigator){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}}catch(e){}
+ const u=new URL(window.location.href);u.searchParams.set('_refresh',Date.now().toString());u.hash='';window.location.replace(u.toString());
+}
 async function oppdaterOgSynk(){
  let f=(DATA.meta&&DATA.meta.updated)||'';
  toast('🔄 Henter ferske tall …');
