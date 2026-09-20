@@ -35,6 +35,14 @@ body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMac
 .hdr .sub{color:var(--mut);font-size:11.5px;margin-top:1px}
 .hardrefresh{flex:none;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:750;white-space:nowrap}
 .hardrefresh:active{transform:scale(.96)}
+.syncbtn{flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap}
+.syncbtn:disabled{opacity:.65;color:var(--mut)}
+.syncstate{display:none;align-items:flex-start;gap:9px;margin:8px 4px 11px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--mut);font-size:12px}
+.syncstate.on{display:flex}.syncstate.ok{border-color:color-mix(in srgb,var(--good) 40%,var(--line));color:var(--good)}
+.syncstate.warn{border-color:color-mix(in srgb,var(--energy) 40%,var(--line));color:var(--energy)}
+.syncstate.err{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));color:var(--warn)}
+.syncdot{width:9px;height:9px;border-radius:50%;background:currentColor;margin-top:5px;flex:none}
+.syncstate.busy .syncdot{animation:pulse 1.1s ease-in-out infinite}@keyframes pulse{50%{opacity:.25;transform:scale(.72)}}
 .pagetitle{font-size:26px;font-weight:820;letter-spacing:-.6px;margin:6px 18px 2px}
 .pagesub{color:var(--mut);font-size:12.5px;margin:0 18px 10px}
 /* pages */
@@ -170,6 +178,7 @@ select,.seg2{background:var(--card2);color:var(--ink);border:1px solid var(--lin
 const SBURL="https://eqexsfwedreefqkiujge.supabase.co", SBKEY="sb_publishable_gKpTafEl4sGFCH3j4vfDqA_Majh7uZP";
 let DATA={meta:{}}, R=[], WK=[], FOOD={}, STY={}, PLAN=[], PLANMAL={}, FASE=null, REC=null, MAAL={kcal:1950,protein:165,vekt:90};
 let byDate={}, minD="", maxD="", sb=null;
+let SYNC={busy:false,kind:'',text:'',requestId:null,revision:null}, _syncRun=0;
 const MON=['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
 const MONF=['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
 const DAG=['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
@@ -293,7 +302,7 @@ function garminPanel(r){
 function pageIdag(){
  const rd=readiness();const day=rd.date||maxD;const r=byDate[day]||{};
  let h='';
- h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button onclick="oppdaterOgSynk()" style="flex-shrink:0;margin-top:4px;background:var(--card2);color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;white-space:nowrap">↻ Oppdater</button></div>`;
+ h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="pagetitle">I dag</div><div class="pagesub">${DAG[toDate(day).getDay()]} ${labelDay(day)} · dagsform basert på natt</div></div><button id="syncbtn" class="syncbtn" onclick="oppdaterOgSynk()">↻ Oppdater data</button></div><div id="syncstate" class="syncstate" role="status" aria-live="polite"><span class="syncdot"></span><span id="synctext"></span></div>`;
  h+=`<div class="card hero"><div class="ring">${ring(rd.score,rd.col)}<div class="val"><div><div class="num" style="color:${rd.col}">${rd.score!=null?rd.score:'–'}</div><div class="lab">dagsform</div></div></div></div><div class="txt"><div class="st" style="color:${rd.col}">${rd.lab}</div><div class="ds">${rd.parts.map(p=>p[0]+' '+p[1]).join(' · ')}</div>${rd.note?'<div class="muted small" style="margin-top:5px">'+rd.note+'</div>':''}</div></div>`;
  // Garmin recovery (datasanker)
  h+=garminPanel(r);
@@ -313,7 +322,7 @@ function pageIdag(){
  if(eb&&eb.bal!=null){h+=`<h2 class="sh">Energibalanse i dag</h2><div class="card"><div style="display:flex;justify-content:space-between"><div><div class="muted small">Inntak</div><div style="font-weight:800;font-size:18px">${fmt(eb.inn,0)}</div></div><div><div class="muted small">Forbruk</div><div style="font-weight:800;font-size:18px">${fmt(eb.ut,0)}</div></div><div><div class="muted small">Balanse</div><div style="font-weight:800;font-size:18px;color:${eb.bal<0?'var(--good)':'var(--energy)'}">${eb.bal>0?'+':''}${fmt(eb.bal,0)}</div></div></div><div class="muted small" style="margin-top:8px">Kun logget mat teller. Forbruk = Garmin målt total (BMR+aktiv), ellers aktiv + basal ~2300.</div></div>`}
  // recommendation
  if(REC){h+=`<h2 class="sh">Anbefaling i morgen</h2><div class="card rec"><div class="rk">🏋️ ${REC.tren_t}</div><div class="rb">${REC.tren_b}</div><div class="rk" style="margin-top:10px">🍽️ ${REC.mat_t}</div><div class="rb">${REC.mat_b}</div><div class="muted small" style="margin-top:9px;border-top:1px solid var(--line);padding-top:7px">Forslag ut fra dine mål og recovery — ikke medisinsk råd. Forutsetter legeklarering.</div></div>`}
- document.getElementById('p-idag').innerHTML=h;
+ document.getElementById('p-idag').innerHTML=h;renderSyncState();
 }
 function plannedFor(day){const wd=(toDate(day).getDay()+6)%7;return PLANMAL[String(wd)]||null}
 function doneFor(day){const w=WK.filter(x=>x.d===day);const sty=(STY[day]||[]).length>0;let type=null;if(sty)type='styrke';else if(w.length){const t=w.map(x=>x.t).join(' ');type=/Styrke/.test(t)?'styrke':'kondis'}return{workouts:w,sty,type}}
@@ -572,25 +581,67 @@ function boot(data){
  show('idag');
 }
 async function gunzipB64(b64){const bin=atob(b64),by=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);const st=new Blob([by]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(st).text());}
-let _synkPoll=null;
 function toast(msg){let t=document.getElementById('htoast');if(!t){t=document.createElement('div');t.id='htoast';t.style.cssText='position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:88%;text-align:center;transition:opacity .4s';document.body.appendChild(t);}t.textContent=msg;t.style.opacity='1';clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},4500);}
 async function tvungenOppdatering(){
- toast('↻ Hentar ny appversjon …');
+ toast('↻ Henter ny appversjon …');
  try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
  try{if('serviceWorker' in navigator){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}}catch(e){}
  const u=new URL(window.location.href);u.searchParams.set('_refresh',Date.now().toString());u.hash='';window.location.replace(u.toString());
 }
+function renderSyncState(){
+ const box=document.getElementById('syncstate'),txt=document.getElementById('synctext'),btn=document.getElementById('syncbtn');
+ if(btn){btn.disabled=SYNC.busy;btn.textContent=SYNC.busy?'Oppdaterer …':'↻ Oppdater data';}
+ if(!box||!txt)return;
+ box.className='syncstate'+(SYNC.text?' on':'')+(SYNC.busy?' busy':'')+(SYNC.kind?' '+SYNC.kind:'');
+ txt.textContent=SYNC.text||'';
+}
+function setSync(p){SYNC=Object.assign({},SYNC,p);renderSyncState();}
+function vent(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function rpcEllerFeil(navn,parametre){
+ const {data,error}=await sb.rpc(navn,parametre||{});
+ if(error)throw new Error(error.message||'Ukjent feil fra serveren.');
+ return data;
+}
+async function hentNyesteSnapshot(){
+ const data=await rpcEllerFeil('helse_snapshot');
+ if(!data)throw new Error('Serveren returnerte ingen helsedata.');
+ const nd=await gunzipB64(data);boot(nd);return nd;
+}
 async function oppdaterOgSynk(){
- let f=(DATA.meta&&DATA.meta.updated)||'';
- toast('🔄 Henter ferske tall …');
- try{const {data}=await sb.rpc('helse_snapshot');if(data){const nd=await gunzipB64(data);boot(nd);f=(nd.meta&&nd.meta.updated)||f;}}catch(e){}
- try{await sb.rpc('helse_be_om_synk');}catch(e){toast('✓ Viser nyeste (kunne ikke bestille ny synk)');return;}
- toast('🔄 Ber Mac-en om nyeste … (~1 min)');
- if(_synkPoll)clearInterval(_synkPoll);let n=0;
- _synkPoll=setInterval(async()=>{n++;
-  try{const {data}=await sb.rpc('helse_snapshot');if(data){const nd=await gunzipB64(data);if(nd.meta&&nd.meta.updated!==f){clearInterval(_synkPoll);_synkPoll=null;boot(nd);toast('✓ Oppdatert — '+nd.meta.updated);return;}}}catch(e){}
-  if(n>=12){clearInterval(_synkPoll);_synkPoll=null;toast('Viser det som var klart. Trykk igjen om et halvt minutt om noe mangler.');}
- },12000);
+ if(SYNC.busy)return;
+ const run=++_syncRun;
+ setSync({busy:true,kind:'',text:'Henter siste tilgjengelige data …',requestId:null});
+ try{
+  await hentNyesteSnapshot();
+  setSync({text:'Sender oppdateringsbestilling til Mac-en …'});
+  const jobb=await rpcEllerFeil('helse_bestill_synk');
+  if(!jobb||!jobb.request_id)throw new Error('Serveren opprettet ikke en synkroniseringsjobb.');
+  const requestId=jobb.request_id,startRevision=Number(jobb.revision||0);
+  setSync({requestId,revision:startRevision,text:jobb.coalesced?'Fortsetter en oppdatering som allerede kjører …':'Bestillingen er mottatt. Venter på Mac-en …'});
+  const frist=Date.now()+6*60*1000;
+  while(Date.now()<frist&&run===_syncRun){
+   await vent(5000);
+   if(run!==_syncRun)return;
+   const status=await rpcEllerFeil('helse_synk_status',{p_request_id:requestId});
+   if(!status||status.request_match===false||status.status==='superseded')throw new Error((status&&status.message)||'En nyere oppdatering har overtatt.');
+   if(status.status==='error')throw new Error(status.message||'Oppdateringen feilet på Mac-en.');
+   if(status.status==='done'){
+    const sluttRevision=Number(status.snapshot_revision||0);
+    if(sluttRevision<=startRevision)throw new Error('Oppdateringen ble avsluttet uten en ny datarevisjon.');
+    setSync({text:'Nye data er klare. Henter dem inn i appen …',revision:sluttRevision});
+    const nd=await hentNyesteSnapshot();
+    setSync({busy:false,kind:'ok',text:'✓ Oppdatert '+((nd.meta&&nd.meta.updated)||'nå')+' · revisjon '+sluttRevision});
+    toast('✓ Helsedataene er oppdatert');
+    return;
+   }
+   const detalj=status.message?' · '+status.message:'';
+   setSync({text:(status.stage||'Oppdaterer helsedata')+detalj});
+  }
+  setSync({busy:false,kind:'warn',text:'Oppdateringen tar lengre tid enn ventet, men kan fortsatt kjøre på Mac-en. Trykk igjen senere for status.'});
+ }catch(e){
+  setSync({busy:false,kind:'err',text:'Kunne ikke fullføre: '+(e&&e.message?e.message:'ukjent feil')});
+  toast('Oppdateringen ble ikke fullført');
+ }
 }
 function shellMsg(html){const s=document.getElementById('shell');s.innerHTML=html;s.style.display='flex';document.getElementById('nav').style.display='none';}
 async function loadData(){
