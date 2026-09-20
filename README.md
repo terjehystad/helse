@@ -23,10 +23,15 @@ git push origin main
 → live på https://helse.terjehystad.com innen ~15 sek. Ingen manuell aksjon på Hostinger.
 
 ## Innlogging
-Appen bruker Supabase Auth. Det statiske skallet inneholder ingen helseverdier;
-snapshotet hentes først etter gyldig innlogging.
+Den publiserte appen har to lag:
+
+- Hostinger Basic Auth via en serverlokal, usporet `.htaccess`.
+- Supabase Auth + RLS før det private helse-snapshotet kan hentes.
+
+Det statiske skallet inneholder ingen helseverdier. `.htaccess` og tilhørende
+passordfil skal aldri legges i Git.
 
 ## Faser
 1. ✅ Plassholder + pipeline (auto-deploy verifisert)
 2. ✅ Datatomt app-skall (`index.html`) publisert
-3. ✅ Supabase Auth + privat snapshot/RLS
+3. ✅ Basic Auth + Supabase Auth + privat snapshot/RLS
