@@ -348,7 +348,17 @@ function pageTrening(){
 }
 function strengthDays(){const s=new Set();Object.keys(STY).forEach(d=>{if(!FASE||d>=FASE.start)s.add(d)});WK.forEach(w=>{if(/Styrke/i.test(w.t)&&(w.m||0)>=20&&(!FASE||w.d>=FASE.start))s.add(w.d)});return [...s].sort();}
 function faseUke(){if(!FASE)return 1;const dgr=Math.floor((toDate(maxD)-toDate(FASE.start))/86400000);return Math.min(FASE.uker,Math.max(1,Math.floor(dgr/7)+1));}
-function nextStrengthIdx(){if(!FASE)return 0;return strengthDays().length%FASE.rotasjon.length;}
+function nextStrengthIdx(){
+ if(!FASE)return 0;
+ // Fortsett etter sist navngitte A/B-økt. Antall styrkedager kan ikke brukes
+ // alene: spesialuker og etterregistreringer forskyver da rotasjonen.
+ const navn=FASE.rotasjon.map(x=>x.tittel.toLowerCase()),ds=Object.keys(STY).sort().reverse();
+ for(const d of ds){
+  const tekst=(STY[d]||[]).map(x=>x.n||'').join(' ').toLowerCase();
+  for(let i=0;i<navn.length;i++)if(tekst.includes(navn[i]))return (i+1)%FASE.rotasjon.length;
+ }
+ return strengthDays().length%FASE.rotasjon.length;
+}
 function sisteFor(o){const ds=Object.keys(STY).sort().reverse();for(const d of ds){const e=(STY[d]||[]).find(x=>x.o===o);if(e)return {v:+e.v||0,s:e.s,r:e.r,d};}return null;}
 function supersettBoks(ss){if(!ss||!ss.length)return '';return `<div style="background:var(--card2);border-radius:10px;padding:9px 11px;margin-bottom:11px;font-size:12px"><b style="color:var(--acc)">🔁 Supersett-plan</b> — gjør parene rett etter hverandre, hvil <b style="color:var(--ink)">60–90 s</b> etter paret:${ss.map((g,gi)=>`<div class="muted" style="margin-top:3px"><b style="color:var(--ink)">${gi+1}.</b> ${g.join('  +  ')}</div>`).join('')}</div>`;}
 function styrkeFelter(ov,prefix){return ov.map((o,i)=>{const oi=(DATA.ovelse_info||{})[o]||{},sist=sisteFor(o),inf=prefix+'inf'+i;return `<div class="logrow"><span class="lognm">${o}${oi.tip?` <span onclick="tgl('${inf}')" style="display:inline-block;width:16px;height:16px;line-height:14px;text-align:center;border:1px solid var(--line);border-radius:50%;color:var(--acc);font-size:11px;font-style:italic;font-weight:700;cursor:pointer;vertical-align:middle">i</span>`:''}</span>${oi.stasjon?`<div class="muted" style="font-size:11px;margin-top:2px">📍 ${oi.stasjon}</div>`:''}${sist?`<div class="muted" style="font-size:11px;margin-top:2px">↩ Sist: <b style="color:var(--ink)">${sist.v>0?sist.v+' kg':'kroppsvekt'}</b> · ${sist.s}×${sist.r} · ${labelDay(sist.d)}</div>`:`<div class="muted" style="font-size:11px;margin-top:2px">Ingen tidligere registrert vekt</div>`}<div class="logfields"><label class="logfield">Kilo<input id="${prefix}kg${i}" class="loginp" type="number" inputmode="decimal" step="0.5" placeholder="${sist&&sist.v>0?sist.v:'0'}"></label><label class="logfield">Reps<input id="${prefix}rp${i}" class="loginp" type="number" inputmode="numeric" placeholder="${sist?sist.r:'12'}"></label></div>${oi.tip?`<div id="${inf}" class="muted small" style="display:none;margin:8px 0 0">⏱️ Pause <b style="color:var(--ink)">${oi.pause}</b> · ${oi.tip}</div>`:''}</div>`;}).join('');}
